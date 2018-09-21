@@ -8,7 +8,7 @@ contract TestGenr8or {
     Genr8or genr8or = Genr8or(DeployedAddresses.Genr8or());
 
     function testGenr8or() public {
-
+        genr8or.genr8("test", "test", 0x0, 18);
     }
 
 }
