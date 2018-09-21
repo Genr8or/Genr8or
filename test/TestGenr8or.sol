@@ -11,6 +11,9 @@ contract TestGenr8or {
         Genr8 gen = genr8or.genr8("test", "test", 0x0, 18);
         assert(gen.myTokens() == 0);
         assert(gen.counterBalance() == 0);
+        gen.buy.value(0)();
+        //assert(gen.counterBalance() == 1 ether);
+        
     }
 
 }
