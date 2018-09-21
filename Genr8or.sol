@@ -19,10 +19,10 @@ contract Genr8or is Owned {
     }
 
     function genr8(
-        bytes32 name, // Name of the DivvyUp
-        bytes32 symbol,  // ERC20 Symbol fo the DivvyUp
+        bytes32 name, // Name of the Genr8 vertical
+        bytes32 symbol,  // ERC20 Symbol fo the Genr8 vertical
         address counter, // The counter currency to accept. Example: 0x0 for ETH, otherwise the ERC20 token address.
-        uint8 decimals // Number of decimals the token has. Example: 18
+        uint8 decimals // Number of decimals the token has. Example: 18 for ETH
      )
         public 
         returns(address)
