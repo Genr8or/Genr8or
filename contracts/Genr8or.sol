@@ -13,9 +13,14 @@ contract Genr8or is Owned {
     );
   
     address[] public registry;
+    mapping (bytes32 => address) public nameRegistry;
 
     function list() public view returns(address[]){
         return registry;
+    }
+
+    function lookUp(bytes32 name) public view returns(address){
+        return nameRegistry[name];
     }
 
     function genr8(
@@ -24,6 +29,7 @@ contract Genr8or is Owned {
         address counter, // The counter currency to accept. Example: 0x0 for ETH, otherwise the ERC20 token address.
         uint8 decimals // Number of decimals the token has. Example: 18 for ETH
      ) public returns(Genr8) {
+        require(nameRegistry[name] == 0x0);
         Genr8 myGenr8 = new Genr8();
         myGenr8.setName(name);
         myGenr8.setSymbol(symbol);
@@ -33,6 +39,7 @@ contract Genr8or is Owned {
             myGenr8.setDecimals(decimals);
         }
         registry.push(myGenr8);
+        nameRegistry[name] = myGenr8;
         emit Create(name, symbol, counter, decimals, msg.sender);
         return myGenr8;
     }
