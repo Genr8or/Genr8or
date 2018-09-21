@@ -23,7 +23,7 @@ contract Genr8or is Owned {
         bytes32 symbol,  // ERC20 Symbol fo the Genr8 vertical
         address counter, // The counter currency to accept. Example: 0x0 for ETH, otherwise the ERC20 token address.
         uint8 decimals // Number of decimals the token has. Example: 18 for ETH
-     ) public returns(address) {
+     ) public returns(Genr8) {
         Genr8 myGenr8 = new Genr8();
         myGenr8.setName(name);
         myGenr8.setSymbol(symbol);
