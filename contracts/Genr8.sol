@@ -235,11 +235,9 @@ contract Genr8 is Owned {
         if(toAddress == address(this)){
             // If we sent in tokens, destroy them and credit their account with ETH
             if(amountOfTokens > 0){
-                sell(amountOfTokens);
+                sellTokens(msg.sender, amountOfTokens);
             }
-            // fire event
-            emit Transfer(msg.sender, 0x0, amountOfTokens);
-
+            
             return true;
         }
        
@@ -481,6 +479,7 @@ contract Genr8 is Owned {
         
         // fire event
         emit Sell(who, anAmount, taxedCounter);
+        emit Transfer(who, 0x0, anAmount);
         if(revenue > 0){
             emit Revenue(revenue, who, "Sale of tokens");
         }
