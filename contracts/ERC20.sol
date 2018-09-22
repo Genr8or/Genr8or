@@ -1,20 +1,16 @@
 pragma solidity ^0.4.24;
-// ----------------------------------------------------------------------------
-// ERC Token Standard #20 Interface
-// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20-token-standard.md
-// ----------------------------------------------------------------------------
-contract ERC20Interface {
-    function totalSupply() public constant returns (uint256);
-    function balanceOf(address tokenOwner) public constant returns (uint256 balance);
-    function allowance(address tokenOwner, address spender) public constant returns (uint256 remaining);
-    function transfer(address to, uint256 tokens) public returns (bool success);
-    function approve(address spender, uint256 tokens) public returns (bool success);
-    function transferFrom(address from, address to, uint256 tokens) public returns (bool success);
+import "./ERC20Basic.sol";
 
-    event Transfer(address indexed from, address indexed to, uint tokens);
-    event Approval(address indexed tokenOwner, address indexed spender, uint tokens);
+/**
+ * @title ERC20 interface
+ * @dev see https://github.com/ethereum/EIPs/issues/20
+ */
+contract ERC20 is ERC20Basic {
+  function allowance(address owner, address spender) public constant returns (uint256);
+  function transferFrom(address from, address to, uint256 value) public returns (bool);
+  function approve(address spender, uint256 value) public returns (bool);
+  event Approval(address indexed owner, address indexed spender, uint256 value);
 }
-
 
 // ----------------------------------------------------------------------------
 // Contract function to receive approval and execute function in one call

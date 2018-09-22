@@ -1,8 +1,8 @@
 pragma solidity ^0.4.24;
-import "./Owned.sol";
+import "./Ownable.sol";
 import "./Genr8.sol";
 
-contract Genr8or is Owned {
+contract Genr8or is Ownable {
 
     event Create(
         bytes32 name,
@@ -33,7 +33,7 @@ contract Genr8or is Owned {
         Genr8 myGenr8 = new Genr8();
         myGenr8.setName(name);
         myGenr8.setSymbol(symbol);
-        myGenr8.changeOwner(msg.sender);
+        myGenr8.transferOwnership(msg.sender);
         if(counter != 0x0){
             myGenr8.setCounter(counter);
             myGenr8.setDecimals(decimals);
@@ -51,6 +51,6 @@ contract Genr8or is Owned {
     * 
     */
     function transferAnyERC20Token(address tokenAddress, uint tokens) public onlyOwner returns (bool success) {
-        return ERC20Interface(tokenAddress).transfer(owner, tokens);
+        return ERC20(tokenAddress).transfer(owner, tokens);
     }
 }
