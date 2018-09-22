@@ -1,43 +1,6 @@
-pragma solidity ^0.4.20;
+pragma solidity ^0.4.24;
 
-/*
-* Team JUST presents..
-* ====================================*
-* _____     _ _ _ _____    ___ ____   * 
-*|  _  |___| | | |  |  |  |_  |    \  *
-*|   __| . | | | |     |  |_  |  |  | * 
-*|__|  |___|_____|__|__|  |___|____/  *
-*                                     *
-* ====================================*
-* -> What?
-* The original autonomous pyramid, improved:
-* [x] More stable than ever, having withstood severe testnet abuse and attack attempts from our community!.
-* [x] Audited, tested, and approved by known community security specialists such as tocsick and Arc.
-* [X] New functionality; you can now perform partial sell orders. If you succumb to weak hands, you don't have to dump all of your bags!
-* [x] New functionality; you can now transfer tokens between wallets. Trading is now possible from within the contract!
-* [x] New Feature: PoS Masternodes! The first implementation of Ethereum Staking in the world! Vitalik is mad.
-* [x] Masternodes: Holding 100 PoWH3D Tokens allow you to generate a Masternode link, Masternode links are used as unique entry points to the contract!
-* [x] Masternodes: All players who enter the contract through your Masternode have 30% of their 10% dividends fee rerouted from the master-node, to the node-master!
-*
-* -> What about the last projects?
-* Every programming member of the old dev team has been fired and/or killed by 232.
-* The new dev team consists of seasoned, professional developers and has been audited by veteran solidity experts.
-* Additionally, two independent testnet iterations have been used by hundreds of people; not a single point of failure was found.
-* 
-* -> Who worked on this project?
-* - PonziBot (math/memes/main site/master)
-* - Mantso (lead solidity dev/lead web3 dev)
-* - swagg (concept design/feedback/management)
-* - Anonymous#1 (main site/web3/test cases)
-* - Anonymous#2 (math formulae/whitepaper)
-*
-* -> Who has audited & approved the projected:
-* - Arc
-* - tocisck
-* - sumpunk
-*/
-
-contract Hourglass {
+contract P3D {
     /*=================================
     =            MODIFIERS            =
     =================================*/
@@ -114,7 +77,6 @@ contract Hourglass {
     mapping(address => uint256) internal tokenBalanceLedger_;
     mapping(address => uint256) internal referralBalance_;
     mapping(address => int256) internal payoutsTo_;
-    mapping(address => uint256) internal ambassadorAccumulatedQuota_;
     uint256 internal tokenSupply_ = 0;
     uint256 internal profitPerShare_;
 
@@ -125,7 +87,7 @@ contract Hourglass {
     /*
     * -- APPLICATION ENTRY POINTS --  
     */
-    function Hourglass()
+    constructor()
         public
     {
         
@@ -176,7 +138,7 @@ contract Hourglass {
         uint256 _tokens = purchaseTokens(_dividends, 0x0);
         
         // fire event
-        onReinvestment(_customerAddress, _dividends, _tokens);
+        emit onReinvestment(_customerAddress, _dividends, _tokens);
     }
     
     /**
@@ -216,7 +178,7 @@ contract Hourglass {
         _customerAddress.transfer(_dividends);
         
         // fire event
-        onWithdraw(_customerAddress, _dividends);
+        emit onWithdraw(_customerAddress, _dividends);
     }
     
     /**
@@ -250,7 +212,7 @@ contract Hourglass {
         }
         
         // fire event
-        onTokenSell(_customerAddress, _tokens, _taxedEthereum);
+        emit onTokenSell(_customerAddress, _tokens, _taxedEthereum);
     }
     
     
@@ -295,7 +257,7 @@ contract Hourglass {
         profitPerShare_ = SafeMath.add(profitPerShare_, (_dividends * magnitude) / tokenSupply_);
         
         // fire event
-        Transfer(_customerAddress, _toAddress, _taxedTokens);
+        emit Transfer(_customerAddress, _toAddress, _taxedTokens);
         
         // ERC20
         return true;
@@ -313,7 +275,7 @@ contract Hourglass {
         view
         returns(uint)
     {
-        return this.balance;
+        return address(this).balance;
     }
     
     /**
@@ -514,7 +476,7 @@ contract Hourglass {
         payoutsTo_[_customerAddress] += _updatedPayouts;
         
         // fire event
-        onTokenPurchase(_customerAddress, _incomingEthereum, _amountOfTokens, _referredBy);
+        emit onTokenPurchase(_customerAddress, _incomingEthereum, _amountOfTokens, _referredBy);
         
         return _amountOfTokens;
     }

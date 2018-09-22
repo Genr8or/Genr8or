@@ -78,9 +78,6 @@ contract Genr8 is Ownable, MintableBurnableERC20Token {
         string reason
     );
     
-    event Transfer(address indexed from, address indexed to, uint tokens);
-    event Approval(address indexed tokenOwner, address indexed spender, uint tokens);
-    
     /*=====================================
     =            CONFIGURABLES            =
     =====================================*/
@@ -268,6 +265,9 @@ contract Genr8 is Ownable, MintableBurnableERC20Token {
      * Convert X tokens to Y counter
      */
     function tokensToCounter(uint256 anAmount) public view returns(uint256) {
+        if(totalSupply == 0){
+            return anAmount;
+        }
         return SafeMath.div(SafeMath.mul(SafeMath.div(SafeMath.mul(totalSupply, percision), counterBalance()), anAmount),percision);
     }
     
@@ -299,13 +299,13 @@ contract Genr8 is Ownable, MintableBurnableERC20Token {
         return amountOfTokens;
     }
 
-    function sellTokens(address who, uint256 amount) internal returns(uint256) {
-        require(amount > 0);
-        require(amount <= balanceOf(who));
-        uint256 counterAmount = tokensToCounter(amount);
-        uint256 revenue = revenueCost(amount);
+    function sellTokens(address who, uint256 tokenAmount) internal returns(uint256) {
+        require(tokenAmount > 0);
+        require(tokenAmount <= balanceOf(who));
+        uint256 counterAmount = tokensToCounter(tokenAmount);
+        uint256 revenue = revenueCost(counterAmount);
         uint256 taxedCounter = SafeMath.sub(counterAmount, revenue);
-        burn(who, amount);
+        burn(who, tokenAmount);
         //Send them their eth/counter
         if(counter == 0x0){
             who.transfer(taxedCounter);
@@ -314,8 +314,8 @@ contract Genr8 is Ownable, MintableBurnableERC20Token {
         }
         
         // fire event
-        emit Sell(who, amount, taxedCounter);
-        emit Transfer(who, 0x0, amount);
+        emit Sell(who, tokenAmount, taxedCounter);
+        emit Transfer(who, 0x0, tokenAmount);
         if(revenue > 0){
             emit Revenue(revenue, who, "Sale of tokens");
         }
