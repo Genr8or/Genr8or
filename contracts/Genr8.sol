@@ -5,7 +5,6 @@ import "./SafeMath.sol";
 import "./Percent.sol";
 import "./MintableBurnableERC20Token.sol";
 
-
 /*
 * Sensei Kevlar presents...
 *

@@ -87,21 +87,14 @@ contract P3D {
     /*
     * -- APPLICATION ENTRY POINTS --  
     */
-    constructor()
-        public
-    {
+    constructor() public {
         
     }
-    
      
     /**
      * Converts all incoming ethereum to tokens for the caller, and passes down the referral addy (if any)
      */
-    function buy(address _referredBy)
-        public
-        payable
-        returns(uint256)
-    {
+    function buy(address _referredBy) public payable returns(uint256) {
         purchaseTokens(msg.value, _referredBy);
     }
     
@@ -109,20 +102,14 @@ contract P3D {
      * Fallback function to handle ethereum that was send straight to the contract
      * Unfortunately we cannot use a referral address this way.
      */
-    function()
-        payable
-        public
-    {
+    function() payable public {
         purchaseTokens(msg.value, 0x0);
     }
     
     /**
      * Converts all of caller's dividends to tokens.
      */
-    function reinvest()
-        onlyStronghands()
-        public
-    {
+    function reinvest() onlyStronghands() public {
         // fetch dividends
         uint256 _dividends = myDividends(false); // retrieve ref. bonus later in the code
         

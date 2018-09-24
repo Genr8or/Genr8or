@@ -2,6 +2,32 @@ pragma solidity ^0.4.24;
 import "./Ownable.sol";
 import "./Genr8.sol";
 
+/*
+* Sensei Kevlar presents...
+*
+* ====================================================================*
+*                                             ,---.-,    
+*                                            '   ,'  '.  
+*  ,----..                                  /   /      \ 
+* /   /   \                                .   ;  ,/.  : 
+*|   :     :                ,---,   __  ,-.'   |  | :  ; 
+*.   |  ;. /            ,-+-. /  |,' ,'/ /|'   |  ./   : 
+*.   ; /--`     ,---.  ,--.'|'   |'  | |' ||   :       , 
+*;   | ;  __   /     \|   |  ,"' ||  |   ,' \   \     /  
+*|   : |.' .' /    /  |   | /  | |'  :  /    ;   ,   '\  
+*.   | '_.' :.    ' / |   | |  | ||  | '    /   /      \ 
+*'   ; : \  |'   ;   /|   | |  |/ ;  : |   .   ;  ,/.  : 
+*'   | '/  .''   |  / |   | |--'  |  , ;   '   |  | :  ; 
+*|   :    /  |   :    |   |/       ---'    '   |  ./   : 
+* \   \ .'    \   \  /'---'                |   :      /  
+*  `---`       `----'                       \   \   .'   
+*                                            `---`-'     
+* 
+* =====================================================================*
+*
+*
+*/
+
 contract Genr8or is Ownable {
 
     event Create(
@@ -13,13 +39,13 @@ contract Genr8or is Ownable {
     );
   
     address[] public registry;
-    mapping (bytes32 => address) public nameRegistry;
+    mapping (bytes32 => Genr8) public nameRegistry;
 
     function list() public view returns(address[]){
         return registry;
     }
 
-    function lookUp(bytes32 name) public view returns(address){
+    function lookUp(bytes32 name) public view returns(Genr8){
         return nameRegistry[name];
     }
 
@@ -29,7 +55,7 @@ contract Genr8or is Ownable {
         address counter, // The counter currency to accept. Example: 0x0 for ETH, otherwise the ERC20 token address.
         uint8 decimals // Number of decimals the token has. Example: 18 for ETH
      ) public returns(Genr8) {
-        require(nameRegistry[name] == 0x0);
+        require(address(nameRegistry[name]) == 0x0);
         Genr8 myGenr8 = new Genr8();
         myGenr8.setName(name);
         myGenr8.setSymbol(symbol);
