@@ -5,6 +5,7 @@ import "./SafeMath.sol";
 import "./Percent.sol";
 import "./MintableBurnableERC20Token.sol";
 
+
 /*
 * Sensei Kevlar presents...
 *
@@ -30,8 +31,7 @@ import "./MintableBurnableERC20Token.sol";
 *
 *
 */
-
-contract Genr8 is Ownable, MintableBurnableERC20Token {
+contract Genr8 is Ownable, MintableBurnableERC20Token{
     using SafeMath for uint256;
     /*=================================
     =            MODIFIERS            =
