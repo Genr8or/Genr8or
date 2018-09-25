@@ -136,7 +136,7 @@ contract LeadHands is Ownable, ERC721Token {
      /**
      * Constructor
      */
-    constructor(uint256 multiplierPercent, address sourceAddress, address ironHandsAddress, string name, string symbol, string tokenURIPrefix) public {
+    constructor(uint256 multiplierPercent, address sourceAddress, address ironHandsAddress, string name, string symbol, string tokenURIPrefix) public ERC721Token(name, symbol) {
         multiplier = multiplierPercent;
         source = Hourglass(sourceAddress);
         ironHands = IronHands(ironHandsAddress);

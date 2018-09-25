@@ -45,15 +45,15 @@ contract Genr8orICO {
     Genr8ICO[] public registry;
     mapping(bytes32 => Genr8ICO) public nameRegistry;
 
-    constructor(Genr8or myGenr8or) public {
-        genr8or = myGenr8or;
+    constructor(address myGenr8or) public {
+        genr8or = Genr8or(myGenr8or);
     }
 
-    function list() public returns (Genr8ICO[]){
+    function list() public view returns (Genr8ICO[]){
         return registry;
     }
 
-    function lookUp(bytes32 name) returns (Genr8ICO){
+    function lookUp(bytes32 name) public view returns (Genr8ICO){
         return nameRegistry[name];
     }
 
