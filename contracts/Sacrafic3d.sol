@@ -71,7 +71,7 @@ contract Sacrific3d {
     constructor(address hourglass)
         public
     {
-        p3dContract = hourglass;
+        p3dContract = Hourglass(hourglass);
         stages[numberOfStages] = Stage(0, 0, false);
         numberOfStages++;
     }

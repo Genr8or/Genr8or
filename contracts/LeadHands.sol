@@ -126,10 +126,6 @@ contract LeadHands is Ownable, ERC721Token {
     Hourglass source;
     //IronHands, the other revenue source
     IronHands ironHands;
-    //My name for ERC-721 metadata
-    string myName;
-    //My symbol for ERC-721 metadata
-    string mySymbol;
     //tokenURI prefix which will have the tokenId appended to it
     string myTokenURIPrefix;
     
@@ -140,8 +136,6 @@ contract LeadHands is Ownable, ERC721Token {
         multiplier = multiplierPercent;
         source = Hourglass(sourceAddress);
         ironHands = IronHands(ironHandsAddress);
-        myName = name;
-        mySymbol = symbol;
         myTokenURIPrefix = tokenURIPrefix;
     }
     
@@ -331,34 +325,6 @@ contract LeadHands is Ownable, ERC721Token {
         dividends += dividendsPaid;
         //emit and event
         emit Dividends(dividendsPaid);
-    }
-
-    /**
-     * ERC-721 Metadata support for name
-     */
-    function name() external view returns (string _name){
-        return myName;
-    }
-
-    /**
-     * ERC-721 Metadata support for name
-     */
-    function symbol() external view returns (string _symbol){
-        return mySymbol;
-    }
-
-    /**
-     * The owner can change the name.
-     */
-    function setName(string _name) external onlyOwner {
-      myName = _name;
-    }   
-
-    /**
-     * The owner can change the symbol
-     */
-    function setSymbol(string _symbol) external onlyOwner {
-      mySymbol = _symbol;
     }
 
     /**
