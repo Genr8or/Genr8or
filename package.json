@@ -1,0 +1,32 @@
+{
+  "name": "genr8or",
+  "version": "1.0.0",
+  "description": "Genr8or",
+  "main": "truffle.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Genr8or/Genr8or.git"
+  },
+  "keywords": [
+    "Genr8or"
+  ],
+  "author": "Sensei Kevlar",
+  "license": "Unlicense",
+  "bugs": {
+    "url": "https://github.com/Genr8or/Genr8or/issues"
+  },
+  "homepage": "https://github.com/Genr8or/Genr8or#readme",
+  "dependencies": {
+    "truffle": "^4.1.14",
+    "zeppelin-solidity": "^1.12.0"
+  },
+  "devDependencies": {
+    "truffle-flattener": "^1.2.8"
+  }
+}

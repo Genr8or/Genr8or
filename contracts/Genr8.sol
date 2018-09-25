@@ -1,7 +1,7 @@
 pragma solidity ^0.4.24;
-import "./Ownable.sol";
-import "./ERC20.sol";
-import "./SafeMath.sol";
+import "zeppelin-solidity/contracts/ownership/Ownable.sol";
+import "zeppelin-solidity/contracts/token/ERC20/ERC20.sol";
+import "zeppelin-solidity/contracts/math/SafeMath.sol";
 import "./Percent.sol";
 import "./MintableBurnableERC20Token.sol";
 
@@ -42,7 +42,7 @@ contract Genr8 is Ownable, MintableBurnableERC20Token{
     }
     
     modifier onlyPreLaunch() {
-        require(totalSupply == 0 && counterBalance() == 0);
+        require(totalSupply() == 0 && counterBalance() == 0);
         _;
     }
 
@@ -197,20 +197,7 @@ contract Genr8 is Ownable, MintableBurnableERC20Token{
         }
         return super.transfer(toAddress, amountOfTokens);
     }
-
-    /**
-    * Token owner can approve for `spender` to transferFrom(...) `tokens`
-    * from the token owner's account. The `spender` contract function
-    * `receiveApproval(...)` is then executed
-    * 
-    */
-    function approveAndCall(address spender, uint tokens, bytes data) public returns (bool success) {
-        allowed[msg.sender][spender] = tokens;
-        emit Approval(msg.sender, spender, tokens);
-        ApproveAndCallFallBack(spender).receiveApproval(msg.sender, tokens, this, data);
-        return true;
-    }
-    
+ 
 
     /*----------  HELPERS AND CALCULATORS  ----------*/
 
@@ -264,20 +251,20 @@ contract Genr8 is Ownable, MintableBurnableERC20Token{
      * Convert X tokens to Y counter
      */
     function tokensToCounter(uint256 anAmount) public view returns(uint256) {
-        if(totalSupply == 0){
+        if(totalSupply() == 0){
             return anAmount;
         }
-        return SafeMath.div(SafeMath.mul(SafeMath.div(SafeMath.mul(totalSupply, percision), counterBalance()), anAmount),percision);
+        return SafeMath.div(SafeMath.mul(SafeMath.div(SafeMath.mul(totalSupply(), percision), counterBalance()), anAmount),percision);
     }
     
     /**
      * Convert X counter to Y tokens
      */
     function counterToTokens(uint256 anAmount) public view returns(uint256) {
-        if(totalSupply == 0){
+        if(totalSupply() == 0){
             return anAmount;
         }
-        return SafeMath.mul(SafeMath.div(anAmount, SafeMath.div(SafeMath.mul(totalSupply, percision), counterBalance())), percision);
+        return SafeMath.mul(SafeMath.div(anAmount, SafeMath.div(SafeMath.mul(totalSupply(), percision), counterBalance())), percision);
     }
     
     /**

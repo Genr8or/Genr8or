@@ -1,88 +1,13 @@
 pragma solidity ^0.4.24;
-
-contract ERC20Interface {
-    function transfer(address to, uint256 tokens) public returns (bool success);
-}
-
-contract Source {
-    function buy(address) public payable returns(uint256);
-    function withdraw() public;
-    function myTokens() public view returns(uint256);
-    function myDividends(bool) public view returns(uint256);
-    function sell(uint256) public payable;
-}
-
-contract IronHands {
-    function deposit() public payable;
-}
+import "zeppelin-solidity/contracts/token/ERC20/ERC20.sol";
+import "zeppelin-solidity/contracts/token/ERC721/ERC721Token.sol";
+import "zeppelin-solidity/contracts/ownership/Ownable.sol";
+import "zeppelin-solidity/contracts/math/SafeMath.sol";
+import "./Hourglass.sol";
+import "./IronHands.sol";
 
 
-contract Owned {
-    address public owner;
-    address public ownerCandidate;
-
-    constructor() public {
-        owner = msg.sender;
-    }
-
-    modifier onlyOwner {
-        require(msg.sender == owner);
-        _;
-    }
-    
-    function changeOwner(address _newOwner) public onlyOwner {
-        ownerCandidate = _newOwner;
-    }
-    
-    function acceptOwnership() public {
-        require(msg.sender == ownerCandidate);  
-        owner = ownerCandidate;
-    }
-    
-}
-
-interface ERC165 {
-    function supportsInterface(bytes4 interfaceID) external view returns (bool);
-}
-
-interface ERC721 /* is ERC165 */ {
-    event Transfer(address indexed _from, address indexed _to, uint256 indexed _tokenId);
-    event Approval(address indexed _owner, address indexed _approved, uint256 indexed _tokenId);
-    event ApprovalForAll(address indexed _owner, address indexed _operator, bool _approved);
-    function balanceOf(address _owner) external view returns (uint256);
-    function ownerOf(uint256 _tokenId) external view returns (address);
-    function safeTransferFrom(address _from, address _to, uint256 _tokenId, bytes data) external payable;
-    function safeTransferFrom(address _from, address _to, uint256 _tokenId) external payable;
-    function transferFrom(address _from, address _to, uint256 _tokenId) external payable;
-    function approve(address _approved, uint256 _tokenId) external payable;
-    function setApprovalForAll(address _operator, bool _approved) external;
-    function getApproved(uint256 _tokenId) external view returns (address);
-    function isApprovedForAll(address _owner, address _operator) external view returns (bool);
-}
-
-interface ERC721Metadata {
-    function name() external view returns (string _name);
-    function symbol() external view returns (string _symbol);
-    function tokenURI(uint256 _tokenId) external view returns (string);
-}
-
-interface ERC721TokenReceiver {
-    function onERC721Received(address _operator, address _from, uint256 _tokenId, bytes _data) external returns(bytes4);
- }
- 
- 
-interface ERC721Optional {
-    function exists(uint256) external view returns (bool);
-}
-
-interface ERC721Enumerable {
-    function totalSupply() external view returns (uint256);
-    function tokenByIndex(uint256 _index) external view returns (uint256);
-    function tokenOfOwnerByIndex(address _owner, uint256 _index) external view returns (uint256);
-}
-
-
-contract LeadHands is Owned, ERC165, ERC721, ERC721Optional, ERC721Metadata, ERC721TokenReceiver, ERC721Enumerable {
+contract LeadHands is Ownable, ERC721Token {
     /**
      * Constants
      */
@@ -138,14 +63,6 @@ contract LeadHands is Owned, ERC165, ERC721, ERC721Optional, ERC721Metadata, ERC
     }
     
     /**
-     * Only if this is a valid token.
-     */
-    modifier validToken(uint256 _tokenId) {
-        require(isValidToken(_tokenId));
-        _;
-    }
-    
-    /**
      * Only if this person owns the token or is approved
      */
     modifier ownerOrApproved(address _operator, uint256 _tokenId) {
@@ -156,8 +73,8 @@ contract LeadHands is Owned, ERC165, ERC721, ERC721Optional, ERC721Metadata, ERC
     /**
      * Only if this person owns the token
      */
-    modifier tokenOwner(address _operator, uint256 _tokenId){
-        require(isOwner(_operator, _tokenId));
+    modifier isTokenOwner(address _operator, uint256 _tokenId){
+        require(_operator != 0x0 && ownerOf(_tokenId) == _operator);
         _;
     }
     
@@ -193,7 +110,7 @@ contract LeadHands is Owned, ERC165, ERC721, ERC721Optional, ERC721Metadata, ERC
     uint256 output;
     //Total ETH received from dividends
     uint256 dividends;
-    //The percent to return to depositers. 100 for 00%, 200 to double, etc.
+    //The percent to return to depositers. 100 for 0%, 200 to double, etc.
     uint256 public multiplier;
     //Where in the line we are with creditors
     uint256 public payoutOrder = 0;
@@ -205,57 +122,23 @@ contract LeadHands is Owned, ERC165, ERC721, ERC721Optional, ERC721Metadata, ERC
     Participant[] public participants;
     //How much each person is owed
     mapping(address => uint256) public creditRemaining;
-    //Maps the addresses that bypass buying from the source
-    mapping(address => bool) bypassAddress;
-    //Maps the NFT balance to a user (1 per slot)
-    mapping(address => uint256) public participantBalance;
     //What we will be buying
-    Source source;
+    Hourglass source;
     //IronHands, the other revenue source
     IronHands ironHands;
-    //ERC-165 Interface support
-    mapping (bytes4 => bool) internal supportedInterfaces;
-    // Mapping from token ID to approved address
-    mapping (uint256 => address) internal tokenApprovals;
-    // Mapping from owner to operator approvals
-    mapping (address => mapping (address => bool)) internal operatorApprovals;
     //My name for ERC-721 metadata
     string myName;
     //My symbol for ERC-721 metadata
     string mySymbol;
     //tokenURI prefix which will have the tokenId appended to it
     string myTokenURIPrefix;
-    //mapping from addresses to tokens owned
-    mapping (address => uint256[]) internal tokenOwners;
     
      /**
      * Constructor
      */
     constructor(uint256 multiplierPercent, address sourceAddress, address ironHandsAddress, string name, string symbol, string tokenURIPrefix) public {
-        supportedInterfaces[InterfaceSignature_ERC165] = true;
-        supportedInterfaces[InterfaceSignature_ERC721] = true;
-        supportedInterfaces[InterfaceSignature_ERC721Metadata] = true;
-        supportedInterfaces[InterfaceSignature_ERC721Optional] = true;
-        bytes4 DoublrSignature = bytes4(keccak256(this.deposit.selector));
-        supportedInterfaces[bytes4(keccak256(this.deposit.selector)) ^ 
-        bytes4(keccak256(this.withdraw.selector)) ^ 
-        bytes4(keccak256(this.payout.selector)) ^ 
-        bytes4(keccak256(this.myDividends.selector)) ^ 
-        bytes4(keccak256(this.myTokens.selector)) ^ 
-        bytes4(keccak256(this.totalDividends.selector)) ^ 
-        bytes4(keccak256(this.donate.selector)) ^ 
-        bytes4(keccak256(this.backlogLength.selector)) ^ 
-        bytes4(keccak256(this.backlogAmount.selector)) ^ 
-        bytes4(keccak256(this.totalParticipants.selector)) ^ 
-        bytes4(keccak256(this.totalSent.selector)) ^ 
-        bytes4(keccak256(this.amountOwed.selector)) ^ 
-        bytes4(keccak256(this.amountIAmOwed.selector)) ^
-        bytes4(keccak256(this.exit.selector)) ^
-        bytes4(keccak256(this.withdrawAndPayout.selector)) ^
-        bytes4(keccak256(this.balanceOfToken.selector)) ^
-        bytes4(keccak256(this.participantsAheadOfToken.selector))] = true;
         multiplier = multiplierPercent;
-        source = Source(sourceAddress);
+        source = Hourglass(sourceAddress);
         ironHands = IronHands(ironHandsAddress);
         myName = name;
         mySymbol = symbol;
@@ -274,7 +157,7 @@ contract LeadHands is Owned, ERC165, ERC721, ERC721Optional, ERC721Metadata, ERC
         //Compute how much we're going to invest in each opportunity
         uint256 investment = msg.value / 3;
         //Split the deposit up and buy some future revenue from the source
-        uint256 tokens = buyFromSource(investment);
+        uint256 tokens = buyFromHourglass(investment);
         //And some ironHands revenue because that causes events in the future
         buyFromIronHands(investment);
         //Get in line to be paid back.
@@ -283,12 +166,10 @@ contract LeadHands is Owned, ERC165, ERC721, ERC721Optional, ERC721Metadata, ERC
         backlog += amountCredited;
         //Increase the number of participants owed
         participantsOwed++;
-        //Increase the number of NFT owned
-        participantBalance[msg.sender] += 1;
         //Increase the amount owed to this address
         creditRemaining[msg.sender] += amountCredited;
-        //add their token ownership for enumeration
-        tokenOwners[msg.sender].push(participants.length-1);
+        //Give them the token
+        _mint(msg.sender, participants.length-1);
         //Emit a deposit event.
         emit Deposit(msg.value, msg.sender);
         //Do the internal payout loop
@@ -305,9 +186,9 @@ contract LeadHands is Owned, ERC165, ERC721, ERC721Optional, ERC721Metadata, ERC
         //It needs to be something worth splitting up
         require(existingBalance > 10);
         //Balance split up to buy p3d tokens and IronHands
-        uint256 investment = existingBalance / 3;
+        uint256 investment = existingBalance.div(3);
         //Invest it in more revenue from the source.
-        buyFromSource(investment);
+        buyFromHourglass(investment);
         //And more revenue from IronHands.
         buyFromIronHands(investment);
         //Pay people out
@@ -390,7 +271,7 @@ contract LeadHands is Owned, ERC165, ERC721, ERC721Optional, ERC721Metadata, ERC
      * Calling this with a position you own in line with forefit that future payout as well as 50% of your initial deposit.
      * This is here in response to people not being able to "get their money out early". Now you can, but at a very high cost.
      */
-    function exit(uint256 _tokenId) validToken(_tokenId) ownerOrApproved(msg.sender, _tokenId) public {
+    function exit(uint256 _tokenId) ownerOrApproved(msg.sender, _tokenId) public {
         //Withdraw dividends first
         if(myDividends() > 0){
             withdraw();       
@@ -406,7 +287,7 @@ contract LeadHands is Owned, ERC165, ERC721, ERC721Optional, ERC721Metadata, ERC
         //Set amount owed on this position to 0
         participants[_tokenId].payout = 0;
         //Sell particpant's tokens
-        source.sell.value(tokensToSell).gas(1000000)(tokensToSell);
+        source.sell(tokensToSell);
         //get the money out
         withdraw();
         //remove divs from funds to be paid
@@ -418,17 +299,17 @@ contract LeadHands is Owned, ERC165, ERC721, ERC721Optional, ERC721Metadata, ERC
         //Check if owed amount is less than or equal to the amount available
         if (owedAmount <= availableFunds){
             //If more availabe funds are available only send owed amount
-            exitSend(owedAmount, msg.sender,owedAmount);
+            earlyExit(owedAmount, msg.sender,owedAmount);
         }else{
             //If owed amount is greater than available amount send all available
-            exitSend(availableFunds, msg.sender,owedAmount);
+            earlyExit(availableFunds, msg.sender,owedAmount);
         }
     }
 
     /**
      * Exit sending and accounting
      */
-    function exitSend(uint256 _amount, address _addr,uint256 _owed) internal {
+    function earlyExit(uint256 _amount, address _addr,uint256 _owed) internal {
         //Try and pay them, making best effort. But if we fail? Run out of gas? That's not our problem any more.
         _addr.call.value(_amount).gas(1000000)();
         //Record that they were paid
@@ -452,13 +333,6 @@ contract LeadHands is Owned, ERC165, ERC721, ERC721Optional, ERC721Metadata, ERC
         emit Dividends(dividendsPaid);
     }
 
-    /**
-     * ERC-165 Support
-     */
-    function supportsInterface(bytes4 interfaceID) external view returns (bool){
-        return supportedInterfaces[interfaceID];
-    }
-    
     /**
      * ERC-721 Metadata support for name
      */
@@ -541,209 +415,10 @@ contract LeadHands is Owned, ERC165, ERC721, ERC721Optional, ERC721Metadata, ERC
      * ERC-721 Metadata support for getting the token URI
      * Returns a unique URI per token
      */
-    function tokenURI(uint256 _tokenId) external view returns (string){
+    function tokenURI(uint256 _tokenId) public view returns (string){
         return appendUintToString(myTokenURIPrefix, _tokenId);
     }
     
-    /**
-     * ERC-721 Optional support to see if a token exists
-     */
-    function exists(uint256 _tokenId) external view returns (bool){
-        return isValidToken(_tokenId);
-    }
-
-    /**
-     * ERC-721 Enumeration support for enumerating tokens by a zero based index
-     */
-    function tokenByIndex(uint256 _index) public pure returns (uint256){
-        return _index;
-    }
-
-    /**
-     * Internal function to remove items from an array
-     */
-    function remove(uint256[] array, uint index) internal pure returns(uint[] value) {
-        if (index >= array.length) return;
-        uint256[] memory arrayNew = new uint256[](array.length-1);
-        for (uint256 i = 0; i<arrayNew.length; i++){
-            if(i != index && i<index){
-                arrayNew[i] = array[i];
-            } else {
-                arrayNew[i] = array[i+1];
-            }
-        }
-        delete array;
-        return arrayNew;
-    }
-    
-    /**
-     * If we get sent back a token, exit for the owner of it.
-    */
-    function onERC721Received(address _operator, address _from, uint256 _tokenId, bytes _data) external ownerOrApproved(msg.sender, _tokenId) returns(bytes4){
-        return ERC721_NOT_RECEIVED;
-    } 
-    
-    /**
-     * ERC-721 support for external transfer ownership
-     */
-    function approve(address _to, uint256 _tokenId) tokenOwner(msg.sender, _tokenId) public {
-        address owner = ownerOf(_tokenId);
-        require(_to != owner);
-        tokenApprovals[_tokenId] = _to;
-        emit Approval(owner, _to, _tokenId);
-    }
-
-    
-    /**
-     * ERC-721 support for external transfer ownership
-     */
-    function getApproved(uint256 _tokenId) public view returns (address) {
-        return tokenApprovals[_tokenId];
-    }
-
-    /**
-     * ERC-721 support for external transfer ownership
-     */
-    function setApprovalForAll(address _to, bool _approved) public {
-        require(_to != msg.sender);
-        operatorApprovals[msg.sender][_to] = _approved;
-        emit ApprovalForAll(msg.sender, _to, _approved);
-    }
-
-    /**
-     * ERC-721 support for external transfer ownership
-     */
-    function isApprovedForAll(address _owner, address _operator) public view returns (bool) {
-        return operatorApprovals[_owner][_operator];
-    }
-
-    
-    /**
-     * Checks if the tokenId is a valid token that we can allow transfers on.
-     */
-    function isValidToken(uint256 _tokenId) public view returns(bool){
-        //It's a valid token if we haven't paid it out yet, and they haven't exited early.
-        return _tokenId < participants.length;
-    }
-        
-    /**
-     * Number of NFT owned by the address
-     */
-    function balanceOf(address _owner) external view returns (uint256){
-        return participantBalance[_owner];
-    }
-    
-    /**
-     * Who owns the NFT of _tokenID
-     */
-    function ownerOf(uint256 _tokenId) validToken(_tokenId) public view returns (address){
-        return participants[_tokenId].etherAddress;
-    }
-    
-    /**
-     * Total number of tokens in circulation
-     */
-    function totalSupply() external view returns (uint256){
-        return participants.length;
-    }
-    
-    /**
-     * Does this address own this token
-     */
-    function isOwner(address _owner, uint256 _tokenId) validToken(_tokenId) public view returns (bool){
-        return ownerOf(_tokenId) == _owner && _owner != address(0);
-    }
-    
-    /**
-     * Is this address approved or does it own it
-     */
-    function isApprovedOrOwner(address _spender, uint256 _tokenId) validToken(_tokenId) internal view returns (bool) {
-        return (isOwner(_spender, _tokenId) || getApproved(_tokenId) == _spender || isApprovedForAll(ownerOf(_tokenId), _spender));
-    }
-  
-    /**
-     * Transfer ownership 
-     */
-    function transferFrom(address _from, address _to, uint256 _tokenId) validToken(_tokenId) ownerOrApproved(_from, _tokenId) public {
-        //do the transfer
-        internalTransfer(_from, _to, _tokenId);
-    }
-
-    /**
-     * Remove approval
-     */
-    function clearApproval(address _owner, uint256 _tokenId) internal {
-        if (tokenApprovals[_tokenId] != address(0)) {
-            tokenApprovals[_tokenId] = address(0);
-        }
-    }
-  
-    /**
-     * Transfer and callback a function which supports it
-     */
-    function safeTransferFrom(address _from, address _to, uint256 _tokenId) validToken(_tokenId) ownerOrApproved(_from, _tokenId) external payable{
-        internalTransfer(_from, _to, _tokenId);
-        require(checkAndCallSafeTransfer(_from, _to, _tokenId, ""));
-    }
-    
-    /**
-     * Transfer and callback a contract which supports it with data included
-     */
-    function safeTransferFrom(address _from, address _to, uint256 _tokenId, bytes data) validToken(_tokenId) ownerOrApproved(_from, _tokenId) external payable{
-        internalTransfer(_from, _to, _tokenId);
-        require(checkAndCallSafeTransfer(_from, _to, _tokenId, data));
-    }
-    
-    
-    /**
-     * Internal transfer and housekeeping
-     */
-    function internalTransfer(address _from, address _to, uint _tokenId) internal {
-        //Make sure we're not abandoning the token
-        require(_to != address(0));
-        //clear approvals for transfering
-        clearApproval(_from, _tokenId);
-        //Make the payouts go to the new person
-        participants[_tokenId].etherAddress = _to;
-        //Find their ownership of this token by index
-        for(uint256 index = 0; index < tokenOwners[_from].length; index++){
-            //if this is the token
-            if(tokenOwners[_from][index] == _tokenId){
-                //remove it from their ownership
-                tokenOwners[_from] = remove(tokenOwners[_from], index);
-                //we are done
-                break;
-            }
-        }
-        //give ownership to the new owner
-        tokenOwners[_to].push(_tokenId);
-        //emit the event
-        emit Transfer(_from, _to, _tokenId);
-    }
-    
-    /**
-     * Only call transfer callbacks on contracts
-     */
-    function isContract(address _addr) private view returns (bool){
-        uint32 size;
-        assembly {
-            size := extcodesize(_addr)
-        }
-        return (size > 0);
-    }
-    
-    /**
-     * ERC-721 callout for safe transfer
-     */
-    function checkAndCallSafeTransfer(address _from, address _to,  uint256 _tokenId, bytes _data) private returns (bool) {
-        //if this isn't 
-        if (!isContract(_to)) {
-            return true;
-        }
-        bytes4 retval = ERC721TokenReceiver(_to).onERC721Received(msg.sender, _from, _tokenId, _data);
-        return (retval == ERC721_RECEIVED);
-    }
-
     /**
      * Fallback function allows anyone to send money for the cost of gas which
      * goes into the pool. Used by withdraw/dividend payouts so it has to be cheap.
@@ -754,7 +429,7 @@ contract LeadHands is Owned, ERC165, ERC721, ERC721Optional, ERC721Metadata, ERC
     /**
      * Buy some tokens from the revenue source
      */
-    function buyFromSource(uint256 _amount) internal returns(uint256) {
+    function buyFromHourglass(uint256 _amount) internal returns(uint256) {
         return source.buy.value(_amount).gas(1000000)(msg.sender);
     }
     
@@ -768,23 +443,16 @@ contract LeadHands is Owned, ERC165, ERC721, ERC721Optional, ERC721Metadata, ERC
     /**
      * Amount an individual token is owed in the future
      */
-    function balanceOfToken(uint256 _tokenId) validToken(_tokenId) public view returns (uint256) {
+    function balanceOfToken(uint256 _tokenId) public view returns (uint256) {
         return participants[_tokenId].payout;
     }
     
     /**
      * Number of participants in line ahead of this token
      */
-    function participantsAheadOfToken(uint256 _tokenId) validToken(_tokenId) public view returns (uint256) {
+    function participantsAheadOfToken(uint256 _tokenId) public view returns (uint256) {
         require(payoutOrder <= _tokenId);
         return _tokenId - payoutOrder;
-    }
-    
-    /**
-     * The specific tokens owned by this address
-     */
-    function tokensOwned(address _owner) public view returns (uint256[]){
-        return tokenOwners[_owner];
     }
     
     /**
@@ -869,7 +537,7 @@ contract LeadHands is Owned, ERC165, ERC721, ERC721Optional, ERC721Metadata, ERC
      * A trap door for when someone sends tokens other than the intended ones so the overseers can decide where to send them.
      */
     function transferAnyERC20Token(address _tokenAddress, address _tokenOwner, uint256 _tokens) public onlyOwner notSource(_tokenAddress) returns (bool success) {
-        return ERC20Interface(_tokenAddress).transfer(_tokenOwner, _tokens);
+        return ERC20(_tokenAddress).transfer(_tokenOwner, _tokens);
     }
     
 }

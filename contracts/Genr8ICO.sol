@@ -1,6 +1,6 @@
 pragma solidity ^0.4.24;
 import "./MintableBurnableERC20Token.sol";
-import "./Ownable.sol";
+import "zeppelin-solidity/contracts/ownership/Ownable.sol";
 import "./Genr8or.sol";
 import "./Genr8.sol";
 
@@ -140,11 +140,11 @@ contract Genr8ICO is Ownable, MintableBurnableERC20Token {
         hasLaunched = true;
         destination = factory.genr8(myName, mySymbol, counter, decimals);
         Ownable(destination).transferOwnership(owner);
-        if(totalSupply > 0){
+        if(totalSupply() > 0){
             if(counter == 0x0){
-                destination.buy.value(totalSupply)();
+                destination.buy.value(totalSupply())();
             } else {
-                destination.buyERC20(totalSupply);
+                destination.buyERC20(totalSupply());
             }
         }
     }
@@ -157,7 +157,7 @@ contract Genr8ICO is Ownable, MintableBurnableERC20Token {
         if(!hasLaunched){
             return super.balanceOf(anAddress);
         }else{
-            return destination.balanceOf(this).div(totalSupply.div(super.balanceOf(anAddress)));//TODO fix this math it's broken badly
+            return destination.balanceOf(this).div(totalSupply().div(super.balanceOf(anAddress)));//TODO fix this math it's broken badly
         }
     }
 
@@ -172,7 +172,7 @@ contract Genr8ICO is Ownable, MintableBurnableERC20Token {
         if(!hasLaunched){
             return someTokens;
         }
-        return totalSupply.mul(10000).div(destination.balanceOf(this)).mul(someTokens).div(10000);
+        return totalSupply().mul(10000).div(destination.balanceOf(this)).mul(someTokens).div(10000);
     }
     
     function withdraw(uint256 amount) balanceHolder public returns (bool) {

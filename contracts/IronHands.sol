@@ -1,4 +1,7 @@
 pragma solidity ^0.4.24;
+import "zeppelin-solidity/contracts/token/ERC20/ERC20.sol";
+import "zeppelin-solidity/contracts/math/SafeMath.sol";
+import "./Hourglass.sol";
 
 /**
  * 
@@ -100,18 +103,6 @@ pragma solidity ^0.4.24;
  *  
  */
 
-contract ERC20Interface {
-    function transfer(address to, uint256 tokens) public returns (bool success);
-}
-
-contract POWH {
-    
-    function buy(address) public payable returns(uint256);
-    function withdraw() public;
-    function myTokens() public view returns(uint256);
-    function myDividends(bool) public view returns(uint256);
-}
-
 contract Owned {
     address public owner;
     address public ownerCandidate;
@@ -192,14 +183,14 @@ contract IronHands is Owned {
     //How much each person is owed
     mapping(address => uint256) public creditRemaining;
     //What we will be buying
-    POWH weak_hands;
+    Hourglass weak_hands;
 
     /**
      * Constructor
      */
     function IronHands(uint multiplierPercent, address powh) public {
         multiplier = multiplierPercent;
-        weak_hands = POWH(powh);
+        weak_hands = Hourglass(powh);
     }
     
     
@@ -381,7 +372,7 @@ contract IronHands is Owned {
      * A trap door for when someone sends tokens other than the intended ones so the overseers can decide where to send them.
      */
     function transferAnyERC20Token(address tokenAddress, address tokenOwner, uint tokens) public onlyOwner notPowh(tokenAddress) returns (bool success) {
-        return ERC20Interface(tokenAddress).transfer(tokenOwner, tokens);
+        return ERC20(tokenAddress).transfer(tokenOwner, tokens);
     }
     
 }
