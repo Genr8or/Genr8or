@@ -1,6 +1,7 @@
 pragma solidity ^0.4.24;
 import "zeppelin-solidity/contracts/ownership/Ownable.sol";
 import "./Genr8.sol";
+import "./Genr8Registry.sol";
 
 /*
 * Sensei Kevlar presents...
@@ -38,12 +39,13 @@ contract Genr8or is Ownable {
         address creator
     );
   
-    address[] public registry;
+    Genr8Registry public registry;
     mapping (bytes32 => Genr8) public nameRegistry;
 
-    function list() public view returns(address[]){
-        return registry;
+    constructor(Genr8Registry myRegistry){
+        registry = myRegistry;
     }
+
 
     function lookUp(bytes32 name) public view returns(Genr8){
         return nameRegistry[name];
@@ -59,12 +61,12 @@ contract Genr8or is Ownable {
         Genr8 myGenr8 = new Genr8();
         myGenr8.setName(name);
         myGenr8.setSymbol(symbol);
-        myGenr8.transferOwnership(msg.sender);
         if(counter != 0x0){
             myGenr8.setCounter(counter);
             myGenr8.setDecimals(decimals);
         }
-        registry.push(myGenr8);
+        myGenr8.transferOwnership(msg.sender);
+        //registry.push(myGenr8);
         nameRegistry[name] = myGenr8;
         emit Create(name, symbol, counter, decimals, msg.sender);
         return myGenr8;

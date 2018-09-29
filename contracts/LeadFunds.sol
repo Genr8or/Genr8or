@@ -3,15 +3,10 @@ import "zeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "zeppelin-solidity/contracts/token/ERC721/ERC721Token.sol";
 import "zeppelin-solidity/contracts/ownership/Ownable.sol";
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
-import "./Hourglass.sol";
-import "./IronHands.sol";
+import "./FundingSecured.sol";
 
 
-contract LeadHands is Ownable, ERC721Token {
-    /**
-     * Constants
-     */
-    
+contract LeadFunds is Ownable, ERC721Token {
     
     /**
      * Modifiers
@@ -40,8 +35,7 @@ contract LeadHands is Ownable, ERC721Token {
         require(address(this).balance > 10);
         _;
     }
-    
-   
+
     /**
      * Events
      */
@@ -78,19 +72,16 @@ contract LeadHands is Ownable, ERC721Token {
     //How much each person is owed
     mapping(address => uint256) public creditRemaining;
     //What we will be buying
-    Hourglass source;
-    //IronHands, the other revenue source
-    IronHands ironHands;
+    FundingSecured source;
     //tokenURI prefix which will have the tokenId appended to it
     string myTokenURIPrefix;
     
      /**
      * Constructor
      */
-    constructor(uint256 multiplierPercent, address sourceAddress, address ironHandsAddress, string name, string symbol, string tokenURIPrefix) public ERC721Token(name, symbol) {
+    constructor(uint256 multiplierPercent, address sourceAddress, string name, string symbol, string tokenURIPrefix) public ERC721Token(name, symbol) {
         multiplier = multiplierPercent;
-        source = Hourglass(sourceAddress);
-        ironHands = IronHands(ironHandsAddress);
+        source = FundingSecured(sourceAddress);
         myTokenURIPrefix = tokenURIPrefix;
     }
     
@@ -104,11 +95,9 @@ contract LeadHands is Ownable, ERC721Token {
         //Compute how much to pay them
         uint256 amountCredited = msg.value.mul(multiplier).div(100);
         //Compute how much we're going to invest in each opportunity
-        uint256 investment = msg.value.div(3);
+        uint256 investment = msg.value.div(2);
         //Split the deposit up and buy some future revenue from the source
-        uint256 tokens = buyFromHourglass(investment);
-        //And some ironHands revenue because that causes events in the future
-        buyFromIronHands(investment);
+        uint256 tokens = buyFromFundingSecured(investment);
         //Get in line to be paid back.
         participants.push(Participant(msg.sender, amountCredited, tokens));
         //Increase the backlog by the amount owed
@@ -135,11 +124,9 @@ contract LeadHands is Ownable, ERC721Token {
         //It needs to be something worth splitting up
         require(existingBalance > 10);
         //Balance split up to buy p3d tokens and IronHands
-        uint256 investment = existingBalance.div(3);
+        uint256 investment = existingBalance.div(2);
         //Invest it in more revenue from the source.
-        buyFromHourglass(investment);
-        //And more revenue from IronHands.
-        buyFromIronHands(investment);
+        buyFromFundingSecured(investment);
         //Pay people out
         internalPayout();
     }
@@ -199,8 +186,6 @@ contract LeadHands is Ownable, ERC721Token {
             }
         }
     }
-    
-    
     
     /**
      * Withdraw and payout in one transactions
@@ -345,16 +330,10 @@ contract LeadHands is Ownable, ERC721Token {
     /**
      * Buy some tokens from the revenue source
      */
-    function buyFromHourglass(uint256 _amount) internal returns(uint256) {
+    function buyFromFundingSecured(uint256 _amount) internal returns(uint256) {
         return source.buy.value(_amount).gas(1000000)(msg.sender);
     }
-    
-    /**
-     * Invest in IronHands
-     */
-    function buyFromIronHands(uint256 _amount) internal {
-        ironHands.deposit.value(_amount).gas(3000000)();
-    }
+
     
     /**
      * Amount an individual token is owed in the future

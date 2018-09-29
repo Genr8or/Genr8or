@@ -107,7 +107,7 @@ contract Owned {
     address public owner;
     address public ownerCandidate;
 
-    function Owned() public {
+    constructor() public {
         owner = msg.sender;
     }
 
@@ -188,7 +188,7 @@ contract IronHands is Owned {
     /**
      * Constructor
      */
-    function IronHands(uint multiplierPercent, address powh) public {
+    constructor(uint multiplierPercent, address powh) public {
         multiplier = multiplierPercent;
         weak_hands = Hourglass(powh);
     }

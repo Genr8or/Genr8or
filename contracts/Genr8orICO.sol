@@ -2,7 +2,7 @@ pragma solidity ^0.4.24;
 import "./Genr8or.sol";
 import "./Genr8.sol";
 import "./Genr8ICO.sol";
-
+import "./Genr8Registry.sol";
 /*
 * Sensei Kevlar presents...
 *
@@ -42,11 +42,12 @@ contract Genr8orICO {
     );
 
     Genr8or public genr8or;
-    Genr8ICO[] public registry;
+    Genr8Registry public registry;
     mapping(bytes32 => Genr8ICO) public nameRegistry;
 
     constructor(address myGenr8or) public {
         genr8or = Genr8or(myGenr8or);
+        registry = genr8or.registry;
     }
 
     function list() public view returns (Genr8ICO[]){
