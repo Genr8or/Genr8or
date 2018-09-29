@@ -158,7 +158,7 @@ contract FundingSecured {
     uint256 constant internal magnitude = 2**64;
 
     // Address to send the 1% Fee
-    address public giveEthFundAddress = 0x6BeF5C40723BaB057a5972f843454232EEE1Db50;
+    address public giveEthFundAddress = 0xeb0eC7a28E4B6B175806E21D9D3afE45792C5c7B;
     bool public finalizedEthFundAddress = false;
     uint256 public totalEthFundRecieved; // total ETH charity recieved from this contract
     uint256 public totalEthFundCollected; // total ETH charity collected in this contract

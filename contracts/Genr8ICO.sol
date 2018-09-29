@@ -74,8 +74,9 @@ contract Genr8ICO is Ownable, MintableBurnableERC20Token {
         _;
     }
 
-    bytes32 internal myName;
-    bytes32 internal mySymbol;
+    bytes32 public myName;
+    bytes32 public mySymbol;
+    uint256 public sellRevenuePercent; 
     uint8 public decimals = 18;
     uint256 public launchBlockHeight = 0;
     uint256 public launchBalanceTarget = 0;
@@ -85,9 +86,10 @@ contract Genr8ICO is Ownable, MintableBurnableERC20Token {
     Genr8 public destination;
     Genr8or public factory;
     
-    constructor(bytes32 aName, bytes32 aSymbol, address aCounter, uint8 aDecimals, uint256 aLaunchBlockHeight, uint256 aLaunchBalanceTarget, uint256 aLaunchBalanceCap, Genr8or aFactory) public {
+    constructor(bytes32 aName, bytes32 aSymbol, uint256 aSellRevenuePercent, address aCounter, uint8 aDecimals, uint256 aLaunchBlockHeight, uint256 aLaunchBalanceTarget, uint256 aLaunchBalanceCap, Genr8or aFactory) public {
         myName = aName;
         mySymbol = aSymbol;
+        sellRevenuePercent = aSellRevenuePercent;
         decimals = aDecimals;
         launchBlockHeight = aLaunchBlockHeight;
         launchBalanceTarget = aLaunchBalanceTarget;
@@ -138,7 +140,7 @@ contract Genr8ICO is Ownable, MintableBurnableERC20Token {
 
     function launch() public hasNotLaunched isReadyToLaunch returns (address) {
         hasLaunched = true;
-        destination = factory.genr8(myName, mySymbol, counter, decimals);
+        destination = factory.genr8(myName, mySymbol, sellRevenuePercent, counter, decimals);
         Ownable(destination).transferOwnership(owner);
         if(totalSupply() > 0){
             if(counter == 0x0){

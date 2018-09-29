@@ -33,6 +33,7 @@ contract Genr8orICO {
 
     event Create(bytes32 name,
         bytes32 symbol,
+        uint256 sellRevenuePercent,
         address counter,
         uint8 decimals,
         uint256 launchBlockHeight,
@@ -45,8 +46,9 @@ contract Genr8orICO {
     Genr8Registry public registry;
     mapping(bytes32 => Genr8ICO) public nameRegistry;
 
-    constructor(address myGenr8or) public {
+    constructor(address myGenr8or, address myRegistry) public {
         genr8or = Genr8or(myGenr8or);
+        registry = Genr8Registry(myRegistry);
         //registry = genr8or.registry;
     }
 
@@ -55,12 +57,13 @@ contract Genr8orICO {
     //}
 
     function lookUp(bytes32 name) public view returns (Genr8ICO){
-        return nameRegistry[name];
+        return Genr8ICO(registry.lookUp(name, "Genr8ICO"));
     }
 
     function genr8ICO(        
         bytes32 name, // Name of the DivvyUp
         bytes32 symbol,  // ERC20 Symbol fo the DivvyUp
+        uint256 sellRevenuePercent, //The revenue taken as a percentage on sells, 0
         address counter, // The counter currency to accept. Example: 0x0 for ETH, otherwise the ERC20 token address.
         uint8 decimals, // Number of decimals the token has. Example: 18
         uint256 launchBlockHeight, // Block this won't launch before, or 0 for any block.
@@ -70,12 +73,11 @@ contract Genr8orICO {
         public 
         returns (Genr8ICO)
     {
-        require(address(genr8or.lookUp(name)) == 0x0 && address(lookUp(name)) == 0x0);
-        Genr8ICO ico = new Genr8ICO(name, symbol, counter, decimals, launchBlockHeight, launchBalanceTarget, launchBalanceCap, genr8or);
+        require(registry.lookUp(name, "Genr8") == 0x0 && registry.lookUp(name, "Genr8ICO") == 0x0);
+        Genr8ICO ico = new Genr8ICO(name, symbol, sellRevenuePercent, counter, decimals, launchBlockHeight, launchBalanceTarget, launchBalanceCap, genr8or);
         ico.transferOwnership(msg.sender);
-        //registry.push(ico);
-        nameRegistry[name] = ico;
-        emit Create(name, symbol, counter, decimals, launchBlockHeight, launchBalanceTarget, launchBalanceCap, msg.sender);        
+        registry.setRegistry(name, "Genr8ICO", ico);
+        emit Create(name, symbol, sellRevenuePercent, counter, decimals, launchBlockHeight, launchBalanceTarget, launchBalanceCap, msg.sender);        
         return ico;   
     }
 

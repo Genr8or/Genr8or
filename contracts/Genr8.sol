@@ -99,7 +99,12 @@ contract Genr8 is Ownable, MintableBurnableERC20Token{
     /**
     * -- APPLICATION ENTRY POINTS --  
     */
-    constructor() public {
+    constructor(bytes32 myName, bytes32 mySymbol, uint256 mySellRevenuePercent, address myCounter,uint8 myDecimals) public {
+        name = myName;
+        symbol = mySymbol;
+        sellRevenuePercent = mySellRevenuePercent;
+        counter = myCounter;
+        decimals = myDecimals;
     }
     
     /**

@@ -182,14 +182,14 @@ contract FoundersCards {
     {
         fundingSecured = ERC20Basic(_fundingSecured);
         dev = msg.sender;
-        fundsDividendAddr = 0xeb0ec7a28e4b6b175806e21d9d3afe45792c5c7b;
+        fundsDividendAddr = 0xeb0eC7a28E4B6B175806E21D9D3afE45792C5c7B;
 
-        cs = 0xeb0ec7a28e4b6b175806e21d9d3afe45792c5c7b;
-        cf = 0xeb0ec7a28e4b6b175806e21d9d3afe45792c5c7b;
+        cs = 0xeb0eC7a28E4B6B175806E21D9D3afE45792C5c7B;
+        cf = 0xeb0eC7a28E4B6B175806E21D9D3afE45792C5c7B;
 
-        w1 = 0xeb0ec7a28e4b6b175806e21d9d3afe45792c5c7b;
-        w2 = 0xeb0ec7a28e4b6b175806e21d9d3afe45792c5c7b;
-        w3 = 0xeb0ec7a28e4b6b175806e21d9d3afe45792c5c7b;
+        w1 = 0xeb0eC7a28E4B6B175806E21D9D3afE45792C5c7B;
+        w2 = 0xeb0eC7a28E4B6B175806E21D9D3afE45792C5c7B;
+        w3 = 0xeb0eC7a28E4B6B175806E21D9D3afE45792C5c7B;
 
         totalCards = 12;
 

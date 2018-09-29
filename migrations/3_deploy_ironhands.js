@@ -1,11 +1,11 @@
 var Hourglass = artifacts.require("Hourglass");
 var IronHands = artifacts.require("IronHands");
-var IronHands = artifacts.require("LeadHands");
+var LeadHands = artifacts.require("LeadHands");
 
 module.exports = function(deployer) {
-  deployer.deploy(Hourglass).then(function(instance){
-    deployer.deploy(IronHands, 200, instance).then(function(ironHands){
-      deployer.deploy(LeadHands, 200, instance, ironHands, "LeadHands", "LHS", "www.example.com/lhs/");
+  return deployer.deploy(Hourglass).then((hourglass) => {
+    return deployer.deploy(IronHands, 200, hourglass.address).then((ironHands) => {
+      return deployer.deploy(LeadHands, 200, hourglass.address, ironHands.address, "LeadHands", "LHS", "doublr.io/lhs/");
     });
   });
 };

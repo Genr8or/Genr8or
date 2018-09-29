@@ -146,12 +146,12 @@ contract LeadHands is Ownable, ERC721Token {
         //If we have an existing IronHands to piggyback on
         if(ironHands != address(0)){
             //Do a three way split
-            investment = msg.value.div(3);
+            investment = existingBalance.div(3);
             //Buy some ironHands revenue because that causes events in the future
             buyFromIronHands(investment);
         }else{
             //Do a two way split
-            investment = msg.value.div(2);
+            investment = existingBalance.div(2);
         }
         //Buy some revenue from Hourglass.
         buyFromHourglass(investment);

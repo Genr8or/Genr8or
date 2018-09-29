@@ -3,6 +3,13 @@ import "zeppelin-solidity/contracts/ownership/Ownable.sol";
 
 contract Genr8Registry is Ownable {
 
+    event RegistryEntry(
+        bytes32 namespace,
+        bytes32 key,
+        address value,
+        address setter
+    );
+
     modifier isAdmin() {
         require(administrator[msg.sender] || owner == msg.sender);
         _;
@@ -15,7 +22,7 @@ contract Genr8Registry is Ownable {
     mapping(bytes32 => bool) internal namespaceRegistry;
     mapping(bytes32 => mapping(bytes32=>address)) registry;
     bytes32[] namespaceList;
-    mapping(bytes32 => address) keyList;
+    mapping(bytes32 => address[]) keyList;
     mapping(address => bool) whitelist;
     mapping(address => bool) administrator;
 
@@ -31,12 +38,25 @@ contract Genr8Registry is Ownable {
         registry[namespace][key] = value;
         if(!namespaceRegistry[namespace]){
             namespaceRegistry[namespace] = true;
-            //namespaceList[na].push(namespace);
+            namespaceList.push(namespace);
         }
-        //keyList[key].push(value);
+        keyList[key].push(value);
+        emit RegistryEntry(namespace, key, value, msg.sender);
     }
 
     function lookUp(bytes32 namespace, bytes32 key) public view returns(address){
         return registry[namespace][key];
+    }
+
+    function listNamespaces() public view returns(bytes32[]){
+        return namespaceList;
+    }
+
+    function listKeys(bytes32 key) public view returns(address[]){
+        return keyList[key];
+    }
+
+    function isNamespaceInUse(bytes32 namespace) public view returns(bool){
+        return namespaceRegistry[namespace];
     }
 }

@@ -34,41 +34,38 @@ contract Genr8or is Ownable {
     event Create(
         bytes32 name,
         bytes32 symbol,
+        uint256 sellRevenuePercent,
         address counter,
         uint8 decimals,
         address creator
     );
   
     Genr8Registry public registry;
-    mapping (bytes32 => Genr8) public nameRegistry;
 
-    constructor(Genr8Registry myRegistry){
+    constructor(Genr8Registry myRegistry) public {
         registry = myRegistry;
     }
 
 
     function lookUp(bytes32 name) public view returns(Genr8){
-        return nameRegistry[name];
+        return Genr8(registry.lookUp(name, "Genr8"));
     }
 
     function genr8(
         bytes32 name, // Name of the Genr8 vertical
         bytes32 symbol,  // ERC20 Symbol fo the Genr8 vertical
+        uint256 sellRevenuePercent, //Percent taken for revenue on sells, 0 for none
         address counter, // The counter currency to accept. Example: 0x0 for ETH, otherwise the ERC20 token address.
         uint8 decimals // Number of decimals the token has. Example: 18 for ETH
      ) public returns(Genr8) {
-        require(address(nameRegistry[name]) == 0x0);
-        Genr8 myGenr8 = new Genr8();
-        myGenr8.setName(name);
-        myGenr8.setSymbol(symbol);
-        if(counter != 0x0){
-            myGenr8.setCounter(counter);
-            myGenr8.setDecimals(decimals);
-        }
+        address existing = registry.lookUp(name, "Genr8");
+        address existingICO = registry.lookUp(name, "Genr8ICO");
+        require(existing == 0x0);
+        require(existingICO == 0x0 || existingICO == msg.sender);
+        Genr8 myGenr8 = new Genr8(name, symbol, sellRevenuePercent, counter, decimals);
         myGenr8.transferOwnership(msg.sender);
-        //registry.push(myGenr8);
-        nameRegistry[name] = myGenr8;
-        emit Create(name, symbol, counter, decimals, msg.sender);
+        registry.setRegistry(name, "Genr8", myGenr8);
+        emit Create(name, symbol, sellRevenuePercent, counter, decimals, msg.sender);
         return myGenr8;
     }
 
