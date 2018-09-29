@@ -16,7 +16,7 @@ contract Genr8Registry is Ownable {
     }
 
     modifier isWhitelisted() {
-        require(whitelist[msg.sender] || administrator[msg.sender]);
+        require(whitelist[msg.sender] || administrator[msg.sender] || owner == msg.sender);
         _;
     }
     mapping(bytes32 => bool) internal namespaceRegistry;
@@ -34,7 +34,7 @@ contract Genr8Registry is Ownable {
         whitelist[who] = status;
     }
 
-    function setRegistry(bytes32 namespace, bytes32 key, address value) public {
+    function setRegistry(bytes32 namespace, bytes32 key, address value) isWhitelisted public {
         registry[namespace][key] = value;
         if(!namespaceRegistry[namespace]){
             namespaceRegistry[namespace] = true;
