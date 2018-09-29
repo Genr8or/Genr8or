@@ -9,11 +9,6 @@ import "./IronHands.sol";
 
 contract LeadHands is Ownable, ERC721Token {
     /**
-     * Constants
-     */
-    
-    
-    /**
      * Modifiers
      */
      
@@ -38,6 +33,11 @@ contract LeadHands is Ownable, ERC721Token {
      */
     modifier hasBalance() {
         require(address(this).balance > 10);
+        _;
+    }
+
+    modifier canMint(uint256 amount){
+        require(output == 0 || amount <= totalPurchasableTokens());
         _;
     }
     
@@ -98,17 +98,25 @@ contract LeadHands is Ownable, ERC721Token {
      * Deposit ETH to get in line to be credited back the multiplier as a percent,
      * Add that ETH to the pool, then pay out who we owe and buy more tokens.
      */ 
-    function deposit() payable public {
+    function deposit() payable canMint(msg.value) public {
         //You have to send more than 3000000 wei, and we don't allow investment over 3x the debt owed to keep the backlog down.
-        require(msg.value > 3000000 && (output == 0 || msg.value <= output.mul(3).sub(backlog)));
+        require(msg.value > 3000000 && (output == 0 || msg.value <= totalPurchasableTokens()));
         //Compute how much to pay them
         uint256 amountCredited = msg.value.mul(multiplier).div(100);
         //Compute how much we're going to invest in each opportunity
-        uint256 investment = msg.value.div(3);
+        uint256 investment;
+        //If we have an existing IronHands to piggyback on
+        if(ironHands != address(0)){
+            //Do a three way split
+            investment = msg.value.div(3);
+            //Buy some ironHands revenue because that causes events in the future
+            buyFromIronHands(investment);
+        }else{
+            //Do a two way split
+            investment = msg.value.div(2);
+        }
         //Split the deposit up and buy some future revenue from the source
         uint256 tokens = buyFromHourglass(investment);
-        //And some ironHands revenue because that causes events in the future
-        buyFromIronHands(investment);
         //Get in line to be paid back.
         participants.push(Participant(msg.sender, amountCredited, tokens));
         //Increase the backlog by the amount owed
@@ -134,12 +142,19 @@ contract LeadHands is Ownable, ERC721Token {
         uint256 existingBalance = address(this).balance;
         //It needs to be something worth splitting up
         require(existingBalance > 10);
-        //Balance split up to buy p3d tokens and IronHands
-        uint256 investment = existingBalance.div(3);
-        //Invest it in more revenue from the source.
+        uint256 investment;
+        //If we have an existing IronHands to piggyback on
+        if(ironHands != address(0)){
+            //Do a three way split
+            investment = msg.value.div(3);
+            //Buy some ironHands revenue because that causes events in the future
+            buyFromIronHands(investment);
+        }else{
+            //Do a two way split
+            investment = msg.value.div(2);
+        }
+        //Buy some revenue from Hourglass.
         buyFromHourglass(investment);
-        //And more revenue from IronHands.
-        buyFromIronHands(investment);
         //Pay people out
         internalPayout();
     }
@@ -399,7 +414,6 @@ contract LeadHands is Ownable, ERC721Token {
         return participants[_tokenId].tokens;
     }
     
-
     /**
      * A charitible contribution will be added to the pool.
      */
@@ -426,6 +440,13 @@ contract LeadHands is Ownable, ERC721Token {
      */
     function totalParticipants() public view returns (uint256){
         return participants.length;
+    }
+
+    /**
+     * Total purchasable tokens.
+     */
+    function totalPurchasableTokens() public view returns (uint256){
+        return output.mul(3).sub(backlog);
     }
     
     /**

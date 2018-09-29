@@ -78,6 +78,12 @@ contract Genr8 is Ownable, MintableBurnableERC20Token{
     );
     
     /*=====================================
+    =              CONSTANTS              =
+    =====================================*/
+    
+    uint256 constant MIN_BUY = 0.001 ether;
+
+    /*=====================================
     =            CONFIGURABLES            =
     =====================================*/
     bytes32 public name = "Genr8";
@@ -142,9 +148,7 @@ contract Genr8 is Ownable, MintableBurnableERC20Token{
      * Converts all incoming counter to tokens for the caller
      */
     function buy() public payable ethCounter returns(uint256) {
-        if(msg.value > 0){
-            require(counter == 0x0);
-        }
+        require(msg.value > MIN_BUY);
         return purchaseTokens(msg.sender, msg.value);
     }
     
@@ -162,7 +166,7 @@ contract Genr8 is Ownable, MintableBurnableERC20Token{
      * Fallback function to handle counter that was sent straight to the contract.
      * Causes tokens to be purchased.
      */
-    function() payable public ethCounter {
+    function() payable public {
         emit Revenue(msg.value, msg.sender, "ETH Deposit");
     }
     

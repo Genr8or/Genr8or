@@ -23,6 +23,7 @@
   },
   "homepage": "https://github.com/Genr8or/Genr8or#readme",
   "dependencies": {
+    "npm": "^6.4.1",
     "truffle": "^4.1.14",
     "zeppelin-solidity": "^1.12.0"
   },

@@ -47,12 +47,12 @@ contract Genr8orICO {
 
     constructor(address myGenr8or) public {
         genr8or = Genr8or(myGenr8or);
-        registry = genr8or.registry;
+        //registry = genr8or.registry;
     }
 
-    function list() public view returns (Genr8ICO[]){
-        return registry;
-    }
+    //function list() public view returns (Genr8ICO[]){
+        //return registry;
+    //}
 
     function lookUp(bytes32 name) public view returns (Genr8ICO){
         return nameRegistry[name];
@@ -73,7 +73,7 @@ contract Genr8orICO {
         require(address(genr8or.lookUp(name)) == 0x0 && address(lookUp(name)) == 0x0);
         Genr8ICO ico = new Genr8ICO(name, symbol, counter, decimals, launchBlockHeight, launchBalanceTarget, launchBalanceCap, genr8or);
         ico.transferOwnership(msg.sender);
-        registry.push(ico);
+        //registry.push(ico);
         nameRegistry[name] = ico;
         emit Create(name, symbol, counter, decimals, launchBlockHeight, launchBalanceTarget, launchBalanceCap, msg.sender);        
         return ico;   
