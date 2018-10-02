@@ -2,7 +2,6 @@ pragma solidity ^0.4.24;
 import "./MintableBurnableERC20Token.sol";
 import "zeppelin-solidity/contracts/ownership/Ownable.sol";
 import "./Genr8or.sol";
-import "./Genr8.sol";
 
 /*
 * Sensei Kevlar presents...

@@ -3,9 +3,8 @@ import "zeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "zeppelin-solidity/contracts/token/ERC721/ERC721Token.sol";
 import "zeppelin-solidity/contracts/ownership/Ownable.sol";
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
-import "./Hourglass.sol";
-import "./IronHands.sol";
-
+import "./IronHandsInterface.sol";
+import "./HourglassInterface.sol";
 
 contract LeadHands is Ownable, ERC721Token {
     /**
@@ -78,9 +77,9 @@ contract LeadHands is Ownable, ERC721Token {
     //How much each person is owed
     mapping(address => uint256) public creditRemaining;
     //What we will be buying
-    Hourglass source;
+    HourglassInterface source;
     //IronHands, the other revenue source
-    IronHands ironHands;
+    IronHandsInterface ironHands;
     //tokenURI prefix which will have the tokenId appended to it
     string myTokenURIPrefix;
     
@@ -89,8 +88,8 @@ contract LeadHands is Ownable, ERC721Token {
      */
     constructor(uint256 multiplierPercent, address sourceAddress, address ironHandsAddress, string name, string symbol, string tokenURIPrefix) public ERC721Token(name, symbol) {
         multiplier = multiplierPercent;
-        source = Hourglass(sourceAddress);
-        ironHands = IronHands(ironHandsAddress);
+        source = HourglassInterface(sourceAddress);
+        ironHands = IronHandsInterface(ironHandsAddress);
         myTokenURIPrefix = tokenURIPrefix;
     }
     
