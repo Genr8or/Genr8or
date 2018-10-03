@@ -1,7 +1,8 @@
 pragma solidity ^0.4.24;
-import "./Hourglass.sol";
+import "./HourglassInterface.sol";
+import "./Oraclize.sol";
 
-contract Sacrific3d {
+contract Sacrific3d is usingOraclize{
     
     struct Stage {
         uint8 numberOfPlayers;
@@ -11,23 +12,23 @@ contract Sacrific3d {
         mapping (address => bool) players;
     }
     
-    Hourglass p3dContract;// = Hourglass(0xB3775fB83F7D12A36E0475aBdD1FCA35c091efBe);
+    HourglassInterface p3dContract;// = Hourglass(0xB3775fB83F7D12A36E0475aBdD1FCA35c091efBe);
    
     //a small part of every winners share of the sacrificed players offer is used to purchase p3d instead
-    uint256 constant private P3D_SHARE = 0.005 ether;
+    uint256 public P3D_SHARE;
     
-    uint8 constant public MAX_PLAYERS_PER_STAGE = 5;
-    uint256 constant public OFFER_SIZE = 0.1 ether;
+    uint8 public MAX_PLAYERS_PER_STAGE;
+    uint256 public OFFER_SIZE;
     
-    uint256 private p3dPerStage = P3D_SHARE * (MAX_PLAYERS_PER_STAGE - 1);
+    uint256 public p3dPerStage;
     //not sacrificed players receive their offer back and also a share of the sacrificed players offer 
-    uint256 public winningsPerRound = OFFER_SIZE + OFFER_SIZE / (MAX_PLAYERS_PER_STAGE - 1) - P3D_SHARE;
+    uint256 public winningsPerRound;
     
     mapping(address => uint256) private playerVault;
     mapping(uint256 => Stage) private stages;
     uint256 private numberOfFinalizedStages;
     
-    uint256 public numberOfStages;
+    uint256 public numberOfStages = 0;
     
     event SacrificeOffered(address indexed player);
     event SacrificeChosen(address indexed sarifice);
@@ -68,16 +69,45 @@ contract Sacrific3d {
         _;
     }
     
-    constructor(address hourglass)
+    constructor(address hourglass, uint256 p3dShare, uint8 maxPlayersPerStage, uint256 offerSize)
         public
     {
-        p3dContract = Hourglass(hourglass);
-        stages[numberOfStages] = Stage(0, 0, false);
-        numberOfStages++;
+        require(offerSize >= 0.0001 ether);
+        require(maxPlayersPerStage > 1 && maxPlayersPerStage < 256);
+        require(p3dShare < maxPlayersPerStage * offerSize);
+        P3D_SHARE = p3dShare;
+        MAX_PLAYERS_PER_STAGE = maxPlayersPerStage;
+        OFFER_SIZE = offerSize;
+        p3dPerStage = P3D_SHARE * (MAX_PLAYERS_PER_STAGE - 1);
+        winningsPerRound = OFFER_SIZE + OFFER_SIZE / (MAX_PLAYERS_PER_STAGE - 1) - P3D_SHARE;
+        p3dContract = HourglassInterface(hourglass);
+        stages[0] = Stage(0, 0, false);
+        numberOfStages = 1;
+        oraclize_setProof(proofType_Ledger);
     }
     
     function() external payable {}
     
+    function generatePRNG() internal {
+        uint N = 7; // number of random bytes we want the datasource to return
+        uint delay = 0; // number of seconds to wait before the execution takes place
+        uint callbackGas = 200000; // amount of gas we want Oraclize to set for the callback function
+        oraclize_newRandomDSQuery(delay, N, callbackGas); // this function internally generates the correct oraclize_query and returns its queryId
+    }
+
+    function __callback(bytes32 _queryId, string _result, bytes _proof) public { 
+        require(msg.sender == oraclize_cbAddress());
+        
+        if (oraclize_randomDS_proofVerify__returnCode(_queryId, _result, _proof) != 0) {
+            // the proof verification has failed, do we need to take any action here? (depends on the use case)
+        } else {
+            // the proof verification has passed
+            // now that we know that the random number was safely generated, let's use it..
+            uint8 randomNumber = uint8(keccak256(abi.encodePacked(_result))) % MAX_PLAYERS_PER_STAGE; 
+            tryFinalizeStage(randomNumber);
+        }
+    }
+
     function offerAsSacrifice()
         external
         payable
@@ -88,7 +118,7 @@ contract Sacrific3d {
         acceptOffer();
         
         //try to choose a sacrifice in an already full stage (finalize a stage)
-        tryFinalizeStage();
+        generatePRNG();
     }
     
     function offerAsSacrificeFromVault()
@@ -101,14 +131,14 @@ contract Sacrific3d {
         
         acceptOffer();
         
-        tryFinalizeStage();
+        generatePRNG();
     }
     
     function withdraw()
         external
         hasEarnings
     {
-        tryFinalizeStage();
+        generatePRNG();
         
         uint256 amount = playerVault[msg.sender];
         playerVault[msg.sender] = 0;
@@ -157,7 +187,7 @@ contract Sacrific3d {
         }
     }
     
-    function tryFinalizeStage()
+    function tryFinalizeStage(uint8 winner)
         private
     {
         assert(numberOfStages >= numberOfFinalizedStages);
@@ -180,8 +210,7 @@ contract Sacrific3d {
             if(block.number == stageToFinalize.blocknumber) {return;}
                 
             //determine sacrifice
-            uint8 sacrificeSlot = uint8(blockhash(stageToFinalize.blocknumber)) % MAX_PLAYERS_PER_STAGE;
-            address sacrifice = stageToFinalize.slotXplayer[sacrificeSlot];
+            address sacrifice = stageToFinalize.slotXplayer[winner];
             
             emit SacrificeChosen(sacrifice);
             
@@ -196,7 +225,7 @@ contract Sacrific3d {
             }
             
             //purchase p3d (using ref)
-            p3dContract.buy.value(p3dPerStage)(address(0x1EB2acB92624DA2e601EEb77e2508b32E49012ef));
+            p3dContract.buy.value(p3dPerStage)(address(msg.sender));
         } else {
             invalidateStage(numberOfFinalizedStages);
             

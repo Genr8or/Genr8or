@@ -1,6 +1,7 @@
 var Hourglass = artifacts.require("Hourglass");
 var IronHands = artifacts.require("IronHands");
 var LeadHands = artifacts.require("LeadHands");
+var Sacrific3d = artifacts.require("Sacrific3d");
 
 module.exports = function(deployer, network) {
   if(network == "live"){
@@ -8,7 +9,9 @@ module.exports = function(deployer, network) {
   }else{
     return deployer.deploy(Hourglass).then((hourglass) => {
       return deployer.deploy(IronHands, 200, hourglass.address).then((ironHands) => {
-        return deployer.deploy(LeadHands, 200, hourglass.address, ironHands.address, "LeadHands", "LHS", "doublr.io/lhs/");
+        return deployer.deploy(LeadHands, 200, hourglass.address, ironHands.address, "LeadHands", "LHS", "doublr.io/lhs/").then((leadHands) => {
+          return deployer.deploy(Sacrific3d, hourglass.address, 1000000000000000, 5, 100000000000000000);
+        });
       });
     });
   }
