@@ -18,7 +18,7 @@ The platform consists of multiple parts, each of which contribute to a holistic 
 
 ### Genr8
 
-Genr8 is an ERC-20 security token, initially 1:1 by it's availalbe counter balance (either ETH or another ERC-20 token).
+Genr8 is an ERC-20 security token, backed 1:1 by it's availalbe counter balance (either ETH or another ERC-20 token).
 
 Security tokens are always redeemable for their backing counter at any time, minus an optional fee that can be configured at creation. Buy events are revenue neutral: They don't change the price. Sell events cost an optional percentage, which is put towards 'revenue' for the security token; When someone sells, an amount of counter proportionate to their ownership in the total token supply, multiplied by the optional revenue percent, remains left behind in the balance. This increases the buy, and sell price proportionate to the new ration of token supply to balance.
 
