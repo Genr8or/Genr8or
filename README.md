@@ -16,7 +16,7 @@ The platform consists of multiple parts, each of which contribute to a holistic 
 8. Genr8orFutures: A factory for the one step creation and configuration of Genr8Futures.
 9. Genr8Registry: A registry for the discovery of items 1-8.
 
-### Genr8
+## Genr8
 
 Genr8 is an ERC-20 security token, backed 1:1 by it's availalbe counter balance (either ETH or another ERC-20 token).
 
@@ -34,7 +34,7 @@ Of coures the selling fee is also optional: You can have 0 revenue on sell, maki
 
 From this example, is clear to see that the way to effectively make sure everyone comes out ahead is to ensure a steady supply of *external revenue* for the security. If an investor is investing in this type of security, it's expected that they are speculating on the revenue stream being bigger than the sell percentage of the contract balance, or that there is no sell fee. It is *STRONGLY SUGGESTED* that these only be deployed with the expectation that an additional revenue source will deposit counter in the contract *independant of selling fee* if these are to be economically viable long term, or else limit investors risk by configuring it with *no selling fee  (0)*.
 
-#### How to deploy and use
+### How to deploy and use
 
 The costructor accepts the following arguments:
 - bytes32 Name: ERC-20 Name
@@ -52,12 +52,12 @@ Once deployed, you can:
 - revenueCost: Compute the revenue cost for a sell
 - tokensToCounter/counterToTokens: Compute the exchange rate for counter<->tokens
 
-### Genr8or
-### Genr8ICO
-### Genr8orICO
-### Genr8Bonds
-### Genr8orBonds
-### Genr8Futures
-### Genr8orFutures
+## Genr8or
+## Genr8ICO
+## Genr8orICO
+## Genr8Bonds
+## Genr8orBonds
+## Genr8Futures
+## Genr8orFutures
 
 
