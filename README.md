@@ -20,19 +20,17 @@ The platform consists of multiple parts, each of which contribute to a holistic 
 
 Genr8 is an ERC-20 security token, backed 1:1 by it's availalbe counter balance (either ETH or another ERC-20 token).
 
-Security tokens are always redeemable for their backing counter at any time, minus an optional fee that can be configured at creation. Buy events are revenue neutral: They don't change the price. Sell events cost an optional percentage, which is put towards 'revenue' for the security token; When someone sells, an amount of counter proportionate to their ownership in the total token supply, multiplied by the optional revenue percent, remains left behind in the balance. This increases the buy, and sell price proportionate to the new ration of token supply to balance.
+It's designed to enable investment in an operation which will generate revenue, and share that revenue equally among all investors. It also allows investors to use crowdsourcing of decision making to create additional revenue for participants, with no risk to participants who do not wish to risk at a cost of some of their revenue share.
 
-As a result, the 'price' of the token can only ever go up. Any additional counter which arrives in the balance of the contract is then also counted towards the price increase. The number of investors at risk of losing anything are therefore limited in their loss to the percentage of the revenue amount, and they are themselves limited to a maximum of the cost of selling.
+Security tokens are always redeemable for their backing counter at any time. Buy and sell events are revenue neutral: They don't change the price. Revenue, which is any counter security that enters the contract independant of new investors, is considered 'revenvue' and increases the buy/sell price of the token proportionate to the new amount of funds available.
 
-Let's use an example of 10%:
+As a result, the 'price' of the token can only ever go up, since additional counter which arrives in the balance of the contract is then also counted towards the price increase. The number of investors at risk of losing anything are therefore ZERO.
 
-If 100 people invest 1 ETH each into a 10% revenue contract, then all of them turn around and sell again, only the first 10 will incur a loss, with the 11th person actually breaking even. The first person who sells will incur the most loss, a full 10% loss of their investment, while everyone after them will lose less, and everyone after the 11th person will actually make money, with the last person to sell making the most. *This is, of course, stupid. It represents the worst case scenario.*
+Once the counter has been invested, anyone can submit a "proposal". A proposal is a way to invest the funds in an external source, with the intention of later selling that investment. A proposal is then committed to by investors in the fund, which causes their investment to be spent as part of the execution of the proposal.
 
-If, however, building on this same example, instead of everyone selling right away, everyone holds, and then 10% of the balance (10 ETH) in 'revenue' arrives in the contract, then everyone can sell at a gain, save the first person who sells who breaks even. Anything more than 10 ETH and everyone walks away with a gain.
+A proposal can have and set of conditions for execution, such as an amount that's being invested, or external factors that are invoked through a supplied external contract. Once a proposal has met it's requirement, it can be executed by any committer of it, causing all the committed funds to be spent to the supplied external contract. Committers can then vote to close the propsal, which executes a sell of the committed security, returning a revenue source or realizing a loss for the contract depending on the outcome of the investment.
 
-Of coures the selling fee is also optional: You can have 0 revenue on sell, making all buys and sells revenue neutral, and depend entirely on external revenue.
-
-From this example, is clear to see that the way to effectively make sure everyone comes out ahead is to ensure a steady supply of *external revenue* for the security. If an investor is investing in this type of security, it's expected that they are speculating on the revenue stream being bigger than the sell percentage of the contract balance, or that there is no sell fee. It is *STRONGLY SUGGESTED* that these only be deployed with the expectation that an additional revenue source will deposit counter in the contract *independant of selling fee* if these are to be economically viable long term, or else limit investors risk by configuring it with *no selling fee  (0)*.
+When a committed proposal is closed for a positive win the revenue is split proportionately in a 90/10% split between the committers of the proposal and ALL the owners of the security. However if it's closed for a negative amount that loss is shared only by the committers. Thus is it the best interest of the committers to only close proposals for a gain, or else they will take the loss.
 
 ### How to deploy and use
 
@@ -51,6 +49,12 @@ Once deployed, you can:
 - myTokens: Get your balance
 - revenueCost: Compute the revenue cost for a sell
 - tokensToCounter/counterToTokens: Compute the exchange rate for counter<->tokens
+- createProposal: Create a new proposal
+- commit: Commit funds to an unexecuted proposal
+- uncommit: Uncommit funds to an unexecuted proposal
+- execute: Execute a proposal
+- vote: Vote to close out an executed proposal
+- close: Close an executed proposal that has reached a majority vote to close
 
 ## Genr8or
 ## Genr8ICO
