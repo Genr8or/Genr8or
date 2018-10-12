@@ -225,8 +225,6 @@ contract LeadHands is Ownable, ERC721Token {
         }
     }
     
-    
-    
     /**
      * Withdraw and payout in one transactions
      */

@@ -9,7 +9,7 @@ module.exports = function(deployer, network) {
   }else{
     return deployer.deploy(Hourglass).then((hourglass) => {
       return deployer.deploy(IronHands, 200, hourglass.address).then((ironHands) => {
-        return deployer.deploy(LeadHands, 200, hourglass.address, ironHands.address, "LeadHands", "LHS", "doublr.io/lhs/").then((leadHands) => {
+        return deployer.deploy(LeadHands, web3.toWei(.5,"ether"), 10, 200, hourglass.address, ironHands.address, "LeadHands", "LHS", "doublr.io/lh/").then((leadHands) => {
           //return deployer.deploy(Sacrific3d, hourglass.address, 1000000000000000, 5, 100000000000000000);
         });
       });
