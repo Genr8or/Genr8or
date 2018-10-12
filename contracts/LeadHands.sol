@@ -36,7 +36,7 @@ contract LeadHands is Ownable, ERC721Token {
     }
 
     modifier canMint(uint256 amount){
-        require(output == 0 || amount <= totalPurchasableTokens());
+        require(revenue == 0 || amount <= totalPurchasableBonds());
         _;
     }
     
@@ -61,7 +61,7 @@ contract LeadHands is Ownable, ERC721Token {
     }
 
     //Total ETH revenue over the lifetime of the contract
-    uint256 output;
+    uint256 revenue;
     //Total ETH received from dividends
     uint256 dividends;
     //The percent to return to depositers. 100 for 0%, 200 to double, etc.
@@ -82,15 +82,21 @@ contract LeadHands is Ownable, ERC721Token {
     IronHandsInterface ironHands;
     //tokenURI prefix which will have the tokenId appended to it
     string myTokenURIPrefix;
+    //Bond value per bond, or 0 for user sized bonds.
+    uint256 bondValue;
+    //Amount of inflation to allow, or 0 for unlimited inflation
+    uint256 inflationMultiplier;
     
      /**
      * Constructor
      */
-    constructor(uint256 multiplierPercent, address sourceAddress, address ironHandsAddress, string name, string symbol, string tokenURIPrefix) public ERC721Token(name, symbol) {
+    constructor(uint256 myBondValue, uint256 myInflationMultipler, uint256 multiplierPercent, address sourceAddress, address ironHandsAddress, string name, string symbol, string tokenURIPrefix) public ERC721Token(name, symbol) {
         multiplier = multiplierPercent;
         source = HourglassInterface(sourceAddress);
         ironHands = IronHandsInterface(ironHandsAddress);
         myTokenURIPrefix = tokenURIPrefix;
+        bondValue = myBondValue;
+        inflationMultiplier = myInflationMultipler;
     }
     
         /**
@@ -99,39 +105,56 @@ contract LeadHands is Ownable, ERC721Token {
      */ 
     function deposit() payable canMint(msg.value) public {
         //You have to send more than 3000000 wei, and we don't allow investment over 3x the debt owed to keep the backlog down.
-        require(msg.value > 3000000 && (output == 0 || msg.value <= totalPurchasableTokens()));
-        //Compute how much to pay them
-        uint256 amountCredited = msg.value.mul(multiplier).div(100);
+        require(msg.value > 3000000 && (revenue == 0 || msg.value <= totalPurchasableBonds()));
+        //A single bond is fixed at bond value, or 0 for user defined value on buy
+        uint256 amountPerBond = bondValue == 0 ? msg.value : bondValue;
+        //The amount they have deposited
+        uint256 remainder = msg.value;
+        while(remainder >= amountPerBond){
+            remainder -= bondValue;
+            //Compute how much to pay them
+            uint256 amountCredited = bondValue.mul(multiplier).div(100);
+            //Compute how much we're going to invest in each opportunity
+            uint256 tokens = invest(bondValue);
+            //Get in line to be paid back.
+            participants.push(Participant(msg.sender, amountCredited, tokens));
+            //Increase the backlog by the amount owed
+            backlog += amountCredited;
+            //Increase the number of participants owed
+            participantsOwed++;
+            //Increase the amount owed to this address
+            creditRemaining[msg.sender] += amountCredited;
+            //Give them the token
+            _mint(msg.sender, participants.length-1);
+            //Emit a deposit event.
+            emit Deposit(bondValue, msg.sender);
+        }
+        //If they sent in more than the bond value
+        if(remainder > 0){
+            //Send them back the portion they are owed.
+            msg.sender.transfer(remainder);
+        }
+        //Do the internal payout loop
+        internalPayout();
+    }
+    
+    function invest(uint256 amount) internal returns (uint256){
         //Compute how much we're going to invest in each opportunity
         uint256 investment;
         //If we have an existing IronHands to piggyback on
         if(ironHands != address(0)){
             //Do a three way split
-            investment = msg.value.div(3);
+            investment = amount.div(3);
             //Buy some ironHands revenue because that causes events in the future
             buyFromIronHands(investment);
         }else{
             //Do a two way split
-            investment = msg.value.div(2);
+            investment = amount.div(2);
         }
         //Split the deposit up and buy some future revenue from the source
-        uint256 tokens = buyFromHourglass(investment);
-        //Get in line to be paid back.
-        participants.push(Participant(msg.sender, amountCredited, tokens));
-        //Increase the backlog by the amount owed
-        backlog += amountCredited;
-        //Increase the number of participants owed
-        participantsOwed++;
-        //Increase the amount owed to this address
-        creditRemaining[msg.sender] += amountCredited;
-        //Give them the token
-        _mint(msg.sender, participants.length-1);
-        //Emit a deposit event.
-        emit Deposit(msg.value, msg.sender);
-        //Do the internal payout loop
-        internalPayout();
+        return buyFromHourglass(investment);
     }
-    
+
     /**
      * Take 50% of the money and spend it on tokens, which will pay dividends later.
      * Take the other 50%, and use it to pay off depositors.
@@ -141,19 +164,7 @@ contract LeadHands is Ownable, ERC721Token {
         uint256 existingBalance = address(this).balance;
         //It needs to be something worth splitting up
         require(existingBalance > 10);
-        uint256 investment;
-        //If we have an existing IronHands to piggyback on
-        if(ironHands != address(0)){
-            //Do a three way split
-            investment = existingBalance.div(3);
-            //Buy some ironHands revenue because that causes events in the future
-            buyFromIronHands(investment);
-        }else{
-            //Do a two way split
-            investment = existingBalance.div(2);
-        }
-        //Buy some revenue from Hourglass.
-        buyFromHourglass(investment);
+        invest(existingBalance);
         //Pay people out
         internalPayout();
     }
@@ -171,7 +182,7 @@ contract LeadHands is Ownable, ERC721Token {
             //if we have something to pay them
             if(payoutToSend > 0){
                 //record how much we have paid out
-                output += payoutToSend;
+                revenue += payoutToSend;
                 //subtract how much we've spent
                 existingBalance -= payoutToSend;
                 //subtract the amount paid from the amount owed
@@ -190,7 +201,7 @@ contract LeadHands is Ownable, ERC721Token {
                     emit Payout(payoutToSend, participants[payoutOrder].etherAddress);
                 }else{
                     //undo the accounting, they are being skipped because they are not payable.
-                    output -= payoutToSend;
+                    revenue -= payoutToSend;
                     existingBalance += payoutToSend;
                     backlog += payoutToSend;
                     backlog -= participants[payoutOrder].payout; 
@@ -373,14 +384,14 @@ contract LeadHands is Ownable, ERC721Token {
     /**
      * Amount an individual token is owed in the future
      */
-    function balanceOfToken(uint256 _tokenId) public view returns (uint256) {
+    function balanceOfBonds(uint256 _tokenId) public view returns (uint256) {
         return participants[_tokenId].payout;
     }
     
     /**
      * Number of participants in line ahead of this token
      */
-    function participantsAheadOfToken(uint256 _tokenId) public view returns (uint256) {
+    function participantsAheadOfBond(uint256 _tokenId) public view returns (uint256) {
         require(payoutOrder <= _tokenId);
         return _tokenId - payoutOrder;
     }
@@ -409,7 +420,7 @@ contract LeadHands is Ownable, ERC721Token {
     /**
      * Number of dividends owed to the contract.
      */
-    function positionsTokens(uint256 _tokenId) public view returns(uint256){
+    function positionsBonds(uint256 _tokenId) public view returns(uint256){
         return participants[_tokenId].tokens;
     }
     
@@ -444,15 +455,21 @@ contract LeadHands is Ownable, ERC721Token {
     /**
      * Total purchasable tokens.
      */
-    function totalPurchasableTokens() public view returns (uint256){
-        return output.mul(3).sub(backlog);
+    function totalPurchasableBonds() public view returns (uint256){
+        //If we don't have a limit on inflation
+        if(inflationMultiplier == 0){
+            //It's never over 9000
+            return 9000 ether;
+        }
+        //Take the revenue, multipliy it by the inflationMultiplier, and subtract the backlog
+        return revenue.mul(inflationMultiplier).sub(backlog);
     }
     
     /**
-     * Total amount of ETH that the contract has delt with so far.
+     * Total amount of ETH that the contract has issued back to it's investors.
      */
-    function totalSent() public view returns (uint256){
-        return output;
+    function totalRevenue() public view returns (uint256){
+        return revenue;
     }
     
     /**
