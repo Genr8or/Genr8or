@@ -69,8 +69,9 @@ contract TimeLord is Ownable, MintableBurnableERC20Token {
 
     LeadHandsInterface leadHands;
     HourglassInterface hourglass;
-
-    uint256 public paidOut; // How much total ETH has been paid out to users.
+    
+    // How much total ETH has been paid out to users.
+    uint256 public paidOut; 
 
     /**
      * Constructor
@@ -80,14 +81,20 @@ contract TimeLord is Ownable, MintableBurnableERC20Token {
         hourglass = HourglassInterface(hourglassAddress);
     }
     
+    /**
+     * Default payable function. Any revenue will just increate the redemption price for all futures.
+     */
     function() payable public {
     }
 
+    /**
+     * Purchase futures by investing some ETH.
+     */
     function purchaseFutures() public payable {
-        uint256 oldBalance = address(this).balance - msg.value;
+        uint256 oldBalance = address(this).balance.sub(msg.value);
         leadHands.purchaseBond.value(msg.value)();
         uint256 newBalance = address(this).balance;
-        uint256 remainder = newBalance - oldBalance;
+        uint256 remainder = newBalance.sub(oldBalance);
         if(remainder > 0){
             msg.sender.transfer(remainder);
         }
@@ -131,6 +138,6 @@ contract TimeLord is Ownable, MintableBurnableERC20Token {
     function totalPaid() public view returns (uint256){
         return paidOut;
     }
-    
+
 
 }
