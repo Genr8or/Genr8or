@@ -131,5 +131,6 @@ contract TimeLord is Ownable, MintableBurnableERC20Token {
     function totalPaid() public view returns (uint256){
         return paidOut;
     }
+    
 
 }

@@ -46,7 +46,6 @@ contract LeadHands is Ownable, ERC721Token {
         _;
     }
     
-   
     /**
      * Events
      */
