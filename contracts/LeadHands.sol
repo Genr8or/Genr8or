@@ -119,7 +119,9 @@ contract LeadHands is Ownable, ERC721Token {
         //The amount they have deposited
         uint256 remainder = msg.value;
         //The issued bonds
-        uint256[] issuedBonds;
+        uint256[] memory issuedBonds = new uint256[](0);
+        //counter for storing the bonds in the issuedBonds array
+        uint256 issuedBondsIndex = 0;
         //while we still have money to spend
         while(remainder >= amountPerBond){
             remainder -= bondValue;
@@ -138,7 +140,9 @@ contract LeadHands is Ownable, ERC721Token {
             //Give them the token
             _mint(msg.sender, participants.length-1);
             //Add it to the list of bonds they bought
-            issuedBonds.push(participants.length-1);
+            issuedBonds[issuedBondsIndex] = participants.length-1;
+            //increment the issuedBondsIndex counter
+            issuedBondsIndex++;
             //Emit a deposit event.
             emit BondCreated(bondValue, msg.sender, participants.length-1);
         }
@@ -264,8 +268,6 @@ contract LeadHands is Ownable, ERC721Token {
      */
     function() payable public {
     }
-
-    
     
     /**
      * Buy some tokens from the revenue source
@@ -284,8 +286,15 @@ contract LeadHands is Ownable, ERC721Token {
     /**
      * Amount an individual token is owed in the future
      */
-    function balanceOfBonds(uint256 _tokenId) public view returns (uint256) {
+    function balanceOfBond(uint256 _tokenId) public view returns (uint256) {
         return participants[_tokenId].payout;
+    }
+
+    /**
+     * Payout address of a given bond
+     */
+    function payoutAddressOfBond(uint256 _tokenId) public view returns (address) {
+        return participants[_tokenId].etherAddress;
     }
     
     /**
@@ -355,9 +364,9 @@ contract LeadHands is Ownable, ERC721Token {
     } 
     
     /**
-     * Total number of deposits in the lifetime of the contract.
+     * Total number of bonds issued in the lifetime of the contract.
      */
-    function totalParticipants() public view returns (uint256){
+    function totalBondsIssued() public view returns (uint256){
         return participants.length;
     }
 
@@ -393,6 +402,10 @@ contract LeadHands is Ownable, ERC721Token {
       */
     function amountIAmOwed() public view returns (uint256){
         return amountOwed(msg.sender);
+    }
+
+    function viewBond(uint256 _bondId) public view returns (address, uint256, uint256){
+        return (participants[_bondId].etherAddress, participants[_bondId].payout, participants[_bondId].tokens);
     }
     
     /**

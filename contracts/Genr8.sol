@@ -3,7 +3,7 @@ import "zeppelin-solidity/contracts/ownership/Ownable.sol";
 import "zeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
 import "./Percent.sol";
-import "./MintableBurnableERC20Token.sol";
+import "./BackedERC20Token.sol";
 
 /*
 * Sensei Kevlar presents...
@@ -30,7 +30,7 @@ import "./MintableBurnableERC20Token.sol";
 *
 *
 */
-contract Genr8 is Ownable, MintableBurnableERC20Token{
+contract Genr8 is Ownable, BackedERC20Token {
     using SafeMath for uint256;
     /*=================================
     =            MODIFIERS            =
@@ -53,6 +53,11 @@ contract Genr8 is Ownable, MintableBurnableERC20Token{
 
     modifier erc20Counter(){
         require(counter != 0x0);
+        _;
+    }
+
+    modifier validInvestment(uint256 amount){
+        require(amount >= MIN_BUY);
         _;
     }
     
@@ -81,17 +86,7 @@ contract Genr8 is Ownable, MintableBurnableERC20Token{
     =              CONSTANTS              =
     =====================================*/
     
-    uint256 constant MIN_BUY = 0.001 ether;
-
-    /*=====================================
-    =            CONFIGURABLES            =
-    =====================================*/
-    bytes32 public name = "Genr8";
-    bytes32 public symbol = "GN8";
-    uint256 public sellRevenuePercent = 10;
-    uint256 public percision = 100;
-    uint8 public decimals = 18;
-    address public counter = 0x0;
+    uint256 constant MIN_BUY = 0.0001 ether;
         
     /*=======================================
     =            PUBLIC FUNCTIONS            =
@@ -99,60 +94,13 @@ contract Genr8 is Ownable, MintableBurnableERC20Token{
     /**
     * -- APPLICATION ENTRY POINTS --  
     */
-    constructor(bytes32 myName, bytes32 mySymbol, uint256 mySellRevenuePercent, address myCounter,uint8 myDecimals) public {
-        name = myName;
-        symbol = mySymbol;
-        sellRevenuePercent = mySellRevenuePercent;
-        counter = myCounter;
-        decimals = myDecimals;
-    }
-    
-    /**
-     * Allows the owner to change the name of the contract
-     */
-    function setName(bytes32 newName) onlyOwner public {
-        name = newName;
-        
-    }
-    
-    /**
-     * Allows the owner to change the symbol of the contract
-     */
-    function setSymbol(bytes32 newSymbol) onlyOwner public {
-        symbol = newSymbol;
-    }
-    
-    /**
-     * Allows the owner to change the decimals of the counter in case
-     * they want to support an ERC-20 token with less decimals than 18
-     * Only works prior to money being in the contract
-     */
-    function setDecimals(uint8 _decimals) onlyPreLaunch onlyOwner public {
-        decimals = _decimals;
+    constructor(string myName, string mySymbol, uint8 myDecimals, address myCounter, uint256 myPrecision) public BackedERC20Token(myName, mySymbol, myDecimals, myCounter, myPrecision) {
     }
 
     /**
-     * Allows the owner to change the revenue cost on selling as a percent
-     * Only works prior to money being in the contract
-     */
-    function setSellRevenuePercent(uint256 _sellRevenuePercent, uint256 _percision) onlyPreLaunch onlyOwner public {
-        sellRevenuePercent = _sellRevenuePercent;
-        percision = _percision;
-    }
-    
-    /**
-     * Allows the owner to change the decimals of the counter in case
-     * they want to support an ERC-20 token with less decimals than 18
-     * Only works prior to there being money in the contract
-     */
-    function setCounter(address _counter) onlyPreLaunch onlyOwner public {
-        counter = _counter;
-    }
-    
-    /**
      * Converts all incoming counter to tokens for the caller
      */
-    function buy() public payable ethCounter returns(uint256) {
+    function invest() public payable ethCounter validInvestment(msg.value) returns(uint256) {
         require(msg.value > MIN_BUY);
         return purchaseTokens(msg.sender, msg.value);
     }
@@ -161,7 +109,7 @@ contract Genr8 is Ownable, MintableBurnableERC20Token{
     /**
      * Converts all incoming counter to tokens for the caller
      */
-    function buyERC20(uint256 amount) public erc20Counter returns(uint256) {
+    function investERC20(uint256 amount) public erc20Counter validInvestment(msg.value) returns(uint256) {
         require(ERC20(counter).transferFrom(msg.sender, this, amount));
         return purchaseTokens(msg.sender, amount);
     }
@@ -198,12 +146,15 @@ contract Genr8 is Ownable, MintableBurnableERC20Token{
     function transfer(address toAddress, uint256 amountOfTokens) onlyTokenHolders public returns(bool) {
        // Sell on transfer in instead of transfering to us
         if(toAddress == address(this)){
-            // If we sent in tokens, destroy them and credit their account with ETH
+            // If we sent in tokens
             if(amountOfTokens > 0){
+                //destroy them and credit their account with ETH
                 sellTokens(msg.sender, amountOfTokens);
-            }   
+            }
+            //Don't need to do anything else.
             return true;
         }
+        //Do the normal transfer instead
         return super.transfer(toAddress, amountOfTokens);
     }
  
@@ -222,65 +173,10 @@ contract Genr8 is Ownable, MintableBurnableERC20Token{
     }
     
     /**
-     * Retrieve the name of the token.
-     */
-    function name() public view returns(bytes32) {
-        return name;
-    }
-     
-    /**
-     * Retrieve the symbol of the token.
-     */
-    function symbol() public view returns(bytes32) {
-        return symbol;
-    }
-    
-    /**
-     * Retrieve the decimals of the token.
-     */
-    function decimals() public view returns(uint8) {
-        return decimals;
-    }
-    
-    /**
-     * Retrieve the spread percent applied upon selling 
-     */
-    function sellRevenuePercent() public view returns (uint256, uint256) {
-        return (sellRevenuePercent, percision);
-    }
-     
-    /**
      * Retrieve the tokens owned by the caller.
      */
     function myTokens() public view returns(uint256) {
         return balanceOf(msg.sender);
-    }
-    
-    /**
-     * Convert X tokens to Y counter
-     */
-    function tokensToCounter(uint256 anAmount) public view returns(uint256) {
-        if(totalSupply() == 0){
-            return anAmount;
-        }
-        return SafeMath.div(SafeMath.mul(SafeMath.div(SafeMath.mul(totalSupply(), percision), counterBalance()), anAmount),percision);
-    }
-    
-    /**
-     * Convert X counter to Y tokens
-     */
-    function counterToTokens(uint256 anAmount) public view returns(uint256) {
-        if(totalSupply() == 0){
-            return anAmount;
-        }
-        return SafeMath.mul(SafeMath.div(anAmount, SafeMath.div(SafeMath.mul(totalSupply(), percision), counterBalance())), percision);
-    }
-    
-    /**
-     * Calculate the cost of selling X tokens
-     */
-    function revenueCost(uint256 anAmount) public view returns(uint256) {
-        return sellRevenuePercent > 0 ? SafeMath.mul(anAmount, sellRevenuePercent) / percision : 0;
     }
     
     /*==========================================
@@ -298,23 +194,18 @@ contract Genr8 is Ownable, MintableBurnableERC20Token{
         require(tokenAmount > 0);
         require(tokenAmount <= balanceOf(who));
         uint256 counterAmount = tokensToCounter(tokenAmount);
-        uint256 revenue = revenueCost(counterAmount);
-        uint256 taxedCounter = SafeMath.sub(counterAmount, revenue);
         burn(who, tokenAmount);
         //Send them their eth/counter
         if(counter == 0x0){
-            who.transfer(taxedCounter);
+            who.transfer(counterAmount);
         }else{
-            ERC20(counter).transfer(who, taxedCounter);
+            ERC20(counter).transfer(who, counterAmount);
         }
         
         // fire event
-        emit Sell(who, tokenAmount, taxedCounter);
+        emit Sell(who, tokenAmount, counterAmount);
         emit Transfer(who, 0x0, tokenAmount);
-        if(revenue > 0){
-            emit Revenue(revenue, who, "Sale of tokens");
-        }
-        return taxedCounter;
+        return counterAmount;
     }
 
     /**

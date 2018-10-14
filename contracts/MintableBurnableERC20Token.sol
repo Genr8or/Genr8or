@@ -1,5 +1,6 @@
 pragma solidity ^0.4.24;
 import "zeppelin-solidity/contracts/token/ERC20/StandardToken.sol";
+import "zeppelin-solidity/contracts/token/ERC20/DetailedERC20.sol";
 import "zeppelin-solidity/contracts/ownership/Ownable.sol";
 import "./ApproveAndCallFallBack.sol";
 
@@ -10,7 +11,7 @@ import "./ApproveAndCallFallBack.sol";
  * Based on code by TokenMarketNet: https://github.com/TokenMarketNet/ico/blob/master/contracts/MintableToken.sol
  */
  
-contract MintableBurnableERC20Token is StandardToken, Ownable {
+contract MintableBurnableERC20Token is StandardToken, DetailedERC20, Ownable {
     
   event Mint(address indexed to, uint256 amount);
   event Burn(address indexed from, uint256 amount);
@@ -44,5 +45,6 @@ contract MintableBurnableERC20Token is StandardToken, Ownable {
         ApproveAndCallFallBack(spender).receiveApproval(msg.sender, tokens, this, data);
         return true;
     }
+
 
 }

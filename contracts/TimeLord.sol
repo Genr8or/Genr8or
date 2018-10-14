@@ -4,7 +4,7 @@ import "zeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
 import "./LeadHandsInterface.sol";
 import "./HourglassInterface.sol";
-import "./MintableBurnableERC20Token.sol";
+import "./BackedERC20Token.sol";
 
 /* ================================================================================================ *
  * ================================================================================================ *
@@ -62,9 +62,9 @@ import "./MintableBurnableERC20Token.sol";
  */
 
 
-contract TimeLord is Ownable, MintableBurnableERC20Token {
+contract TimeLord is Ownable, BackedERC20Token {
     
-    event FuturesCreated(address creator, uint256 amount);
+    event FuturesCreated(address creator, uint256 amount, uint256 amountOfInvesment);
     event FuturesDestroyed(address destroyer, uint256 amount, uint256 amountReemed);
 
     LeadHandsInterface leadHands;
@@ -76,7 +76,7 @@ contract TimeLord is Ownable, MintableBurnableERC20Token {
     /**
      * Constructor
      */
-    constructor(address leadHandsAddress, address hourglassAddress) public {
+    constructor(string name, string symbol, address leadHandsAddress, address hourglassAddress) BackedERC20Token(name, symbol, 18, 0x0, 1000) public {
         leadHands = LeadHandsInterface(leadHandsAddress);
         hourglass = HourglassInterface(hourglassAddress);
     }
@@ -91,48 +91,50 @@ contract TimeLord is Ownable, MintableBurnableERC20Token {
      * Purchase futures by investing some ETH.
      */
     function purchaseFutures() public payable {
+        //Get the balance of the contract, minus our investment
         uint256 oldBalance = address(this).balance.sub(msg.value);
+        //Spend our investment
         leadHands.purchaseBond.value(msg.value)();
+        //Get the new balance, post investment;
         uint256 newBalance = address(this).balance;
+        //Compute the remaining investment
         uint256 remainder = newBalance.sub(oldBalance);
+        //If we still have remaining investment
         if(remainder > 0){
+            //Send the remainder back.
             msg.sender.transfer(remainder);
         }
-        uint256 amountToCredit = counterToTokens(msg.value);
-        if(amountToCredit > msg.value){
-            amountToCredit = msg.value;
+        //Compute the actual investment
+        uint256 actualInvestment = msg.value.sub(remainder);
+        //Compute how much to give them.
+        uint256 amountToCredit = counterToTokens(actualInvestment);
+        //If the contract is in the positive
+        if(amountToCredit > actualInvestment){
+            //Only credit them the amount of their investment (prevents draining when it's revenue negative)
+            amountToCredit = actualInvestment;
         }
+        //Give them their tokens
         mint(msg.sender, amountToCredit);
-        emit FuturesCreated(msg.sender, amountToCredit);
+        //Log the event
+        emit FuturesCreated(msg.sender, amountToCredit, actualInvestment);
     }
 
+    /**
+     * Enact delivery of your futures, redeeming them for their available value.
+     */
     function redeemFutures(uint256 amount) public {
+        //Make sure they have enough to redeem
         require(balanceOf(msg.sender) >= amount);
+        //Compute how much they're worth
         uint256 amountToSend = tokensToCounter(amount);
+        //Keep the total of how much we have sent for bookkeeping
         paidOut += amountToSend;
+        //Send them their redemption value
         msg.sender.call.value(amountToSend).gas(1000000)();
+        //Burn their tokens
         burn(msg.sender, amount);
+        //Log the event
         emit FuturesDestroyed(msg.sender, amount, amountToSend);
-    }
-
-    /**
-     * Convert X tokens to Y counter
-     */
-    function tokensToCounter(uint256 anAmount) public view returns(uint256) {
-        if(totalSupply() == 0){
-            return anAmount;
-        }
-        return SafeMath.div(SafeMath.mul(SafeMath.div(SafeMath.mul(totalSupply(), 100), address(this).balance), anAmount),100);
-    }
-    
-    /**
-     * Convert X counter to Y tokens
-     */
-    function counterToTokens(uint256 anAmount) public view returns(uint256) {
-        if(totalSupply() == 0){
-            return anAmount;
-        }
-        return SafeMath.mul(SafeMath.div(anAmount, SafeMath.div(SafeMath.mul(totalSupply(), 100), address(this).balance), 100);
     }
 
     function totalPaid() public view returns (uint256){
