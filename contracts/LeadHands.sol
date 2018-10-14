@@ -35,8 +35,14 @@ contract LeadHands is Ownable, ERC721Token {
         _;
     }
 
+    /*
+     * Only if we can mint that many bonds, and they sent enough to buy a single bond
+     */
     modifier canMint(uint256 amount){
-        require(revenue == 0 || amount <= totalPurchasableBonds());
+        require(amount > 3000000 && (revenue == 0 || amount <= totalPurchasableBonds()));
+        if(bondValue > 0){
+            require(amount >= bondValue);
+        }
         _;
     }
     
@@ -44,11 +50,11 @@ contract LeadHands is Ownable, ERC721Token {
     /**
      * Events
      */
-    event Deposit(uint256 amount, address depositer);
-    event Purchase(uint256 amountSpent, uint256 tokensReceived);
-    event Payout(uint256 amount, address creditor);
-    event EarlyExit(uint256 paid, uint256 owed, address deserter);
-    event Dividends(uint256 amount);
+    event BondCreated(uint256 amount, address depositer, uint256 bondId);
+    event Payout(uint256 amount, address creditor, uint256 bondId);
+    event BondPaidOut(uint256 bondId);
+    event BondDestroyed(uint256 paid, uint256 owed, address deserter, uint256 bondId);
+    event Revenue(uint256 amount, address revenueSource);
     event Donation(uint256 amount, address donator);
 
     /**
@@ -60,10 +66,15 @@ contract LeadHands is Ownable, ERC721Token {
         uint256 tokens;
     }
 
+    /**
+     * Storage variables
+     */
     //Total ETH revenue over the lifetime of the contract
     uint256 revenue;
     //Total ETH received from dividends
     uint256 dividends;
+    //Total ETH donated to the contract
+    uint256 donations;
     //The percent to return to depositers. 100 for 0%, 200 to double, etc.
     uint256 public multiplier;
     //Where in the line we are with creditors
@@ -99,17 +110,18 @@ contract LeadHands is Ownable, ERC721Token {
         inflationMultiplier = myInflationMultipler;
     }
     
-        /**
+    /**
      * Deposit ETH to get in line to be credited back the multiplier as a percent,
      * Add that ETH to the pool, then pay out who we owe and buy more tokens.
      */ 
-    function deposit() payable canMint(msg.value) public {
-        //You have to send more than 3000000 wei, and we don't allow investment over 3x the debt owed to keep the backlog down.
-        require(msg.value > 3000000 && (revenue == 0 || msg.value <= totalPurchasableBonds()));
+    function purchaseBond() payable canMint(msg.value) public returns (uint256[]){
         //A single bond is fixed at bond value, or 0 for user defined value on buy
         uint256 amountPerBond = bondValue == 0 ? msg.value : bondValue;
         //The amount they have deposited
         uint256 remainder = msg.value;
+        //The issued bonds
+        uint256[] issuedBonds;
+        //while we still have money to spend
         while(remainder >= amountPerBond){
             remainder -= bondValue;
             //Compute how much to pay them
@@ -126,8 +138,10 @@ contract LeadHands is Ownable, ERC721Token {
             creditRemaining[msg.sender] += amountCredited;
             //Give them the token
             _mint(msg.sender, participants.length-1);
+            //Add it to the list of bonds they bought
+            issuedBonds.push(participants.length-1);
             //Emit a deposit event.
-            emit Deposit(bondValue, msg.sender);
+            emit BondCreated(bondValue, msg.sender, participants.length-1);
         }
         //If they sent in more than the bond value
         if(remainder > 0){
@@ -136,25 +150,10 @@ contract LeadHands is Ownable, ERC721Token {
         }
         //Do the internal payout loop
         internalPayout();
+        //Tell them what bonds were issued to them
+        return issuedBonds;
     }
     
-    function invest(uint256 amount) internal returns (uint256){
-        //Compute how much we're going to invest in each opportunity
-        uint256 investment;
-        //If we have an existing IronHands to piggyback on
-        if(ironHands != address(0)){
-            //Do a three way split
-            investment = amount.div(3);
-            //Buy some ironHands revenue because that causes events in the future
-            buyFromIronHands(investment);
-        }else{
-            //Do a two way split
-            investment = amount.div(2);
-        }
-        //Split the deposit up and buy some future revenue from the source
-        return buyFromHourglass(investment);
-    }
-
     /**
      * Take 50% of the money and spend it on tokens, which will pay dividends later.
      * Take the other 50%, and use it to pay off depositors.
@@ -167,62 +166,6 @@ contract LeadHands is Ownable, ERC721Token {
         invest(existingBalance);
         //Pay people out
         internalPayout();
-    }
-    
-    /**
-     * Internal payout loop called by deposit() and payout()
-     */
-    function internalPayout() hasBalance internal {
-        //Get the balance
-        uint256 existingBalance = address(this).balance;
-         //While we still have money to send
-        while (existingBalance > 0) {
-            //Either pay them what they are owed or however much we have, whichever is lower.
-            uint256 payoutToSend = existingBalance < participants[payoutOrder].payout ? existingBalance : participants[payoutOrder].payout;
-            //if we have something to pay them
-            if(payoutToSend > 0){
-                //record how much we have paid out
-                revenue += payoutToSend;
-                //subtract how much we've spent
-                existingBalance -= payoutToSend;
-                //subtract the amount paid from the amount owed
-                backlog -= payoutToSend;
-                //subtract the amount remaining they are owed
-                creditRemaining[participants[payoutOrder].etherAddress] -= payoutToSend;
-                //credit their account the amount they are being paid
-                participants[payoutOrder].payout -= payoutToSend;
-                if(participants[payoutOrder].payout == 0){
-                    //Decrease number of participants owed
-                    participantsOwed--;
-                }
-                //Try and pay them, making best effort. But if we fail? Run out of gas? That's not our problem any more.
-                if(participants[payoutOrder].etherAddress.call.value(payoutToSend).gas(1000000)()){
-                    //Record that they were paid
-                    emit Payout(payoutToSend, participants[payoutOrder].etherAddress);
-                }else{
-                    //undo the accounting, they are being skipped because they are not payable.
-                    revenue -= payoutToSend;
-                    existingBalance += payoutToSend;
-                    backlog += payoutToSend;
-                    backlog -= participants[payoutOrder].payout; 
-                    creditRemaining[participants[payoutOrder].etherAddress] -= participants[payoutOrder].payout;
-                    participants[payoutOrder].payout = 0;
-                }
-            }
-            //check for possible reentry
-            existingBalance = address(this).balance;
-            //If we still have balance left over
-            if(existingBalance > 0){
-                //Go to the next person in line
-                payoutOrder += 1;
-                //Decrease number of participants owed
-                participantsOwed--;
-            }
-            //If we've run out of people to pay, stop
-            if(payoutOrder >= participants.length){
-                return;
-            }
-        }
     }
     
     /**
@@ -244,6 +187,7 @@ contract LeadHands is Ownable, ERC721Token {
      * This is here in response to people not being able to "get their money out early". Now you can, but at a very high cost.
      */
     function exit(uint256 _tokenId) ownerOrApproved(msg.sender, _tokenId) public {
+        require(participants[_tokenId].tokens > 0 && participants[_tokenId].payout > 0);
         //Withdraw dividends first
         if(myDividends() > 0){
             withdraw();       
@@ -280,7 +224,7 @@ contract LeadHands is Ownable, ERC721Token {
         //Try and pay them, making best effort. But if we fail? Run out of gas? That's not our problem any more.
         if(msg.sender.call.value(payment).gas(1000000)()){
             //Record that they were paid
-            emit EarlyExit(payment, owedAmount, msg.sender);
+            emit BondDestroyed(payment, owedAmount, msg.sender, _tokenId);
         }
     }
 
@@ -293,11 +237,11 @@ contract LeadHands is Ownable, ERC721Token {
         //withdraw however much we are owed
         source.withdraw.gas(1000000)();
         //remove the amount we already had from the calculation
-        uint256 dividendsPaid = address(this).balance - balance;
+        uint256 revenuePaid = address(this).balance - balance;
         //increase the dividends we've been paid
-        dividends += dividendsPaid;
+        revenue += revenuePaid;
         //emit and event
-        emit Dividends(dividendsPaid);
+        emit Revenue(revenuePaid, source);
     }
 
     /**
@@ -305,49 +249,6 @@ contract LeadHands is Ownable, ERC721Token {
      */
     function setTokenURI(string tokenURI) external onlyOwner {
       myTokenURIPrefix = tokenURI;
-    }
-
-    /**
-     * Helper function for appending the tokenId to the URI
-     */
-    function appendUintToString(string inStr, uint v) internal pure returns (string str) {
-        uint maxlength = 100;
-        bytes memory reversed = new bytes(maxlength);
-        uint i = 0;
-        while (v != 0) {
-            uint remainder = v % 10;
-            v = v / 10;
-            reversed[i++] = byte(48 + remainder);
-        }
-        bytes memory inStrb = bytes(inStr);
-        bytes memory s = new bytes(inStrb.length + i);
-        uint j;
-        for (j = 0; j < inStrb.length; j++) {
-            s[j] = inStrb[j];
-        }
-        for (j = 0; j < i; j++) {
-            s[j + inStrb.length] = reversed[i - 1 - j];
-        }
-        str = string(s);
-    }
-
-    /**
-     * Helper function for appending the tokenId to the URI
-     */
-    function uintToString(uint256 v) internal pure returns (string str) {
-        uint maxlength = 100;
-        bytes memory reversed = new bytes(maxlength);
-        uint i = 0;
-        while (v != 0) {
-            uint remainder = v % 10;
-            v = v / 10;
-            reversed[i++] = byte(48 + remainder);
-        }
-        bytes memory s = new bytes(i + 1);
-        for (uint j = 0; j <= i; j++) {
-            s[j] = reversed[i - j];
-        }
-        str = string(s);
     }
 
     /**
@@ -364,6 +265,8 @@ contract LeadHands is Ownable, ERC721Token {
      */
     function() payable public {
     }
+
+    
     
     /**
      * Buy some tokens from the revenue source
@@ -416,9 +319,16 @@ contract LeadHands is Ownable, ERC721Token {
     }
     
     /**
+     * Number of donations received by the contract.
+     */
+    function totalDonations() public view returns(uint256){
+        return donations;
+    }
+
+    /**
      * Number of dividends owed to the contract.
      */
-    function positionsBonds(uint256 _tokenId) public view returns(uint256){
+    function tokensForBond(uint256 _tokenId) public view returns(uint256){
         return participants[_tokenId].tokens;
     }
     
@@ -426,6 +336,8 @@ contract LeadHands is Ownable, ERC721Token {
      * A charitible contribution will be added to the pool.
      */
     function donate() payable public {
+        require(msg.value > 0);
+        donations += msg.value;
         emit Donation(msg.value, msg.sender);
     }
     
@@ -490,5 +402,131 @@ contract LeadHands is Ownable, ERC721Token {
     function transferAnyERC20Token(address _tokenAddress, address _tokenOwner, uint256 _tokens) public onlyOwner notSource(_tokenAddress) returns (bool success) {
         return ERC20(_tokenAddress).transfer(_tokenOwner, _tokens);
     }
+
+    /**
+     * Internal functions
+     */
+
+    /**
+     * Split revenue either two or three ways, returning the number of tokens generated in doing so
+     */
+    function invest(uint256 amount) private returns (uint256){
+        //Compute how much we're going to invest in each opportunity
+        uint256 investment;
+        //If we have an existing IronHands to piggyback on
+        if(ironHands != address(0)){
+            //Do a three way split
+            investment = amount.div(3);
+            //Buy some ironHands revenue because that causes events in the future
+            buyFromIronHands(investment);
+        }else{
+            //Do a two way split
+            investment = amount.div(2);
+        }
+        //Split the deposit up and buy some future revenue from the source
+        return buyFromHourglass(investment);
+    }
+
+    /**
+     * Internal payout loop called by deposit() and payout()
+     */
+    function internalPayout() hasBalance private {
+        //Get the balance
+        uint256 existingBalance = address(this).balance;
+         //While we still have money to send
+        while (existingBalance > 0) {
+            //Either pay them what they are owed or however much we have, whichever is lower.
+            uint256 payoutToSend = existingBalance < participants[payoutOrder].payout ? existingBalance : participants[payoutOrder].payout;
+            //if we have something to pay them
+            if(payoutToSend > 0){
+                //record how much we have paid out
+                revenue += payoutToSend;
+                //subtract how much we've spent
+                existingBalance -= payoutToSend;
+                //subtract the amount paid from the amount owed
+                backlog -= payoutToSend;
+                //subtract the amount remaining they are owed
+                creditRemaining[participants[payoutOrder].etherAddress] -= payoutToSend;
+                //credit their account the amount they are being paid
+                participants[payoutOrder].payout -= payoutToSend;
+                if(participants[payoutOrder].payout == 0){
+                    //Decrease number of participants owed
+                    participantsOwed--;
+                }
+                //Try and pay them, making best effort. But if we fail? Run out of gas? That's not our problem any more.
+                if(participants[payoutOrder].etherAddress.call.value(payoutToSend).gas(1000000)()){
+                    //Record that they were paid
+                    emit Payout(payoutToSend, participants[payoutOrder].etherAddress, payoutOrder);
+                }else{
+                    //undo the accounting, they are being skipped because they are not payable.
+                    revenue -= payoutToSend;
+                    existingBalance += payoutToSend;
+                    backlog += payoutToSend;
+                    backlog -= participants[payoutOrder].payout; 
+                    creditRemaining[participants[payoutOrder].etherAddress] -= participants[payoutOrder].payout;
+                    participants[payoutOrder].payout = 0;
+                }
+            }
+            //check for possible reentry
+            existingBalance = address(this).balance;
+            //If we still have balance left over
+            if(participants[payoutOrder].payout == 0){
+                //Log event
+                emit BondPaidOut(payoutOrder);
+                //Go to the next person in line
+                payoutOrder += 1;
+                //Decrease number of participants owed
+                participantsOwed--;
+            }
+            //If we've run out of people to pay, stop
+            if(payoutOrder >= participants.length){
+                return;
+            }
+        }
+    }
+
+    /**
+     * Helper function for appending the tokenId to the URI
+     */
+    function appendUintToString(string inStr, uint v) private pure returns (string str) {
+        uint maxlength = 100;
+        bytes memory reversed = new bytes(maxlength);
+        uint i = 0;
+        while (v != 0) {
+            uint remainder = v % 10;
+            v = v / 10;
+            reversed[i++] = byte(48 + remainder);
+        }
+        bytes memory inStrb = bytes(inStr);
+        bytes memory s = new bytes(inStrb.length + i);
+        uint j;
+        for (j = 0; j < inStrb.length; j++) {
+            s[j] = inStrb[j];
+        }
+        for (j = 0; j < i; j++) {
+            s[j + inStrb.length] = reversed[i - 1 - j];
+        }
+        str = string(s);
+    }
+
+    /**
+     * Helper function for appending the tokenId to the URI
+     */
+    function uintToString(uint256 v) private pure returns (string str) {
+        uint maxlength = 100;
+        bytes memory reversed = new bytes(maxlength);
+        uint i = 0;
+        while (v != 0) {
+            uint remainder = v % 10;
+            v = v / 10;
+            reversed[i++] = byte(48 + remainder);
+        }
+        bytes memory s = new bytes(i + 1);
+        for (uint j = 0; j <= i; j++) {
+            s[j] = reversed[i - j];
+        }
+        str = string(s);
+    }
+
     
 }

@@ -3,7 +3,6 @@ import "zeppelin-solidity/contracts/token/ERC20/StandardToken.sol";
 import "zeppelin-solidity/contracts/ownership/Ownable.sol";
 import "./ApproveAndCallFallBack.sol";
 
-
 /**
  * @title Mintable Burnable ERC20 Token
  * @dev Simple ERC20 Token example, with mintable token creation and burnable token destruction
@@ -33,7 +32,7 @@ contract MintableBurnableERC20Token is StandardToken, Ownable {
         return true;
     }
 
-        /**
+    /**
     * Token owner can approve for `spender` to transferFrom(...) `tokens`
     * from the token owner's account. The `spender` contract function
     * `receiveApproval(...)` is then executed
