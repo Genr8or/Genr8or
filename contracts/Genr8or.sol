@@ -32,11 +32,11 @@ import "./Genr8Registry.sol";
 contract Genr8or is Ownable {
 
     event Create(
-        bytes32 name,
-        bytes32 symbol,
-        uint256 sellRevenuePercent,
-        address counter,
-        uint8 decimals,
+        string name, // Name of the Genr8 vertical
+        string symbol,  // ERC20 Symbol fo the Genr8 vertical
+        uint8 decimals, // Number of decimals the token has. Example: 18 for ETH
+        address counter, // The counter currency to accept. Example: 0x0 for ETH, otherwise the ERC20 token address.
+        uint256 precision,
         address creator
     );
   
@@ -47,27 +47,28 @@ contract Genr8or is Ownable {
     }
 
 
-    function lookUp(bytes32 name) public view returns(Genr8){
+    function lookUp(string name) public view returns(Genr8){
         return Genr8(registry.lookUp(name, "Genr8"));
     }
 
     function genr8(
-        bytes32 name, // Name of the Genr8 vertical
-        bytes32 symbol,  // ERC20 Symbol fo the Genr8 vertical
-        uint256 sellRevenuePercent, //Percent taken for revenue on sells, 0 for none
+        string name, // Name of the Genr8 vertical
+        string symbol,  // ERC20 Symbol fo the Genr8 vertical
+        uint8 decimals, // Number of decimals the token has. Example: 18 for ETH
         address counter, // The counter currency to accept. Example: 0x0 for ETH, otherwise the ERC20 token address.
-        uint8 decimals // Number of decimals the token has. Example: 18 for ETH
+        uint256 precision
      ) public returns(Genr8) {
         address existing = registry.lookUp(name, "Genr8");
         address existingICO = registry.lookUp(name, "Genr8ICO");
         require(existing == 0x0);
         require(existingICO == 0x0 || existingICO == msg.sender);
-        Genr8 myGenr8 = new Genr8(name, symbol, sellRevenuePercent, counter, decimals);
+        Genr8 myGenr8 = new Genr8(name, symbol, decimals, counter, precision);
         myGenr8.transferOwnership(msg.sender);
         registry.setRegistry(name, "Genr8", myGenr8);
-        emit Create(name, symbol, sellRevenuePercent, counter, decimals, msg.sender);
+        emit Create(name, symbol, decimals, counter, precision, msg.sender);
         return myGenr8;
     }
+
 
     /**
     * Owner can transfer out any accidentally sent ERC20 tokens

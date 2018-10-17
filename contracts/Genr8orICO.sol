@@ -30,14 +30,14 @@ import "./Genr8RegistryInterface.sol";
 
 contract Genr8orICO {
 
-    event Create(bytes32 name,
-        bytes32 symbol,
-        uint256 sellRevenuePercent,
-        address counter,
-        uint8 decimals,
-        uint256 launchBlockHeight,
-        uint256 launchBalanceTarget,
-        uint256 launchBalanceCap,
+    event Create(string name, // Name of the DivvyUp
+        string symbol,  // ERC20 Symbol fo the DivvyUp
+        uint8 decimals, // Number of decimals the token has. Example: 18
+        address counter, // The counter currency to accept. Example: 0x0 for ETH, otherwise the ERC20 token address.
+        uint256 precision,
+        uint256 launchBlockHeight, // Block this won't launch before, or 0 for any block.
+        uint256 launchBalanceTarget, // Balance this wont launch before, or 0 for any balance. (soft cap)
+        uint256 launchBalanceCap, // Balance this will not exceed, or 0 for no cap. (hard cap),
         address creator
     );
 
@@ -55,16 +55,16 @@ contract Genr8orICO {
         //return registry;
     //}
 
-    function lookUp(bytes32 name) public view returns (Genr8ICO){
+    function lookUp(string name) public view returns (Genr8ICO){
         return Genr8ICO(registry.lookUp(name, "Genr8ICO"));
     }
 
     function genr8ICO(        
-        bytes32 name, // Name of the DivvyUp
-        bytes32 symbol,  // ERC20 Symbol fo the DivvyUp
-        uint256 sellRevenuePercent, //The revenue taken as a percentage on sells, 0
-        address counter, // The counter currency to accept. Example: 0x0 for ETH, otherwise the ERC20 token address.
+        string name, // Name of the DivvyUp
+        string symbol,  // ERC20 Symbol fo the DivvyUp
         uint8 decimals, // Number of decimals the token has. Example: 18
+        address counter, // The counter currency to accept. Example: 0x0 for ETH, otherwise the ERC20 token address.
+        uint256 precision,
         uint256 launchBlockHeight, // Block this won't launch before, or 0 for any block.
         uint256 launchBalanceTarget, // Balance this wont launch before, or 0 for any balance. (soft cap)
         uint256 launchBalanceCap // Balance this will not exceed, or 0 for no cap. (hard cap)
@@ -73,11 +73,12 @@ contract Genr8orICO {
         returns (Genr8ICO)
     {
         require(registry.lookUp(name, "Genr8") == 0x0 && registry.lookUp(name, "Genr8ICO") == 0x0);
-        Genr8ICO ico = new Genr8ICO(name, symbol, sellRevenuePercent, counter, decimals, launchBlockHeight, launchBalanceTarget, launchBalanceCap, genr8or);
+        Genr8ICO ico = new Genr8ICO(name, symbol, decimals, counter, precision, launchBlockHeight, launchBalanceTarget, launchBalanceCap, genr8or);
         ico.transferOwnership(msg.sender);
         registry.setRegistry(name, "Genr8ICO", ico);
-        emit Create(name, symbol, sellRevenuePercent, counter, decimals, launchBlockHeight, launchBalanceTarget, launchBalanceCap, msg.sender);        
+        emit Create(name, symbol, decimals, counter, precision, launchBlockHeight, launchBalanceTarget, launchBalanceCap, msg.sender);        
         return ico;   
     }
+
 
 }

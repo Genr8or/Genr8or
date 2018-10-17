@@ -4,8 +4,8 @@ import "zeppelin-solidity/contracts/ownership/Ownable.sol";
 contract Genr8Registry is Ownable {
 
     event RegistryEntry(
-        bytes32 namespace,
-        bytes32 key,
+        string namespace,
+        string key,
         address value,
         address setter
     );
@@ -19,10 +19,10 @@ contract Genr8Registry is Ownable {
         require(whitelist[msg.sender] || administrator[msg.sender] || owner == msg.sender);
         _;
     }
-    mapping(bytes32 => bool) internal namespaceRegistry;
-    mapping(bytes32 => mapping(bytes32=>address)) registry;
-    bytes32[] namespaceList;
-    mapping(bytes32 => address[]) keyList;
+    mapping(string => bool) internal namespaceRegistry;
+    mapping(string => mapping(string=>address)) registry;
+    string[] namespaceList;
+    mapping(string => address[]) keyList;
     mapping(address => bool) whitelist;
     mapping(address => bool) administrator;
 
@@ -34,7 +34,7 @@ contract Genr8Registry is Ownable {
         whitelist[who] = status;
     }
 
-    function setRegistry(bytes32 namespace, bytes32 key, address value) isWhitelisted public {
+    function setRegistry(string namespace, string key, address value) isWhitelisted public {
         registry[namespace][key] = value;
         if(!namespaceRegistry[namespace]){
             namespaceRegistry[namespace] = true;
@@ -44,19 +44,15 @@ contract Genr8Registry is Ownable {
         emit RegistryEntry(namespace, key, value, msg.sender);
     }
 
-    function lookUp(bytes32 namespace, bytes32 key) public view returns(address){
+    function lookUp(string namespace, string key) public view returns(address){
         return registry[namespace][key];
     }
 
-    function listNamespaces() public view returns(bytes32[]){
-        return namespaceList;
-    }
-
-    function listKeys(bytes32 key) public view returns(address[]){
+    function listKeys(string key) public view returns(address[]){
         return keyList[key];
     }
 
-    function isNamespaceInUse(bytes32 namespace) public view returns(bool){
+    function isNamespaceInUse(string namespace) public view returns(bool){
         return namespaceRegistry[namespace];
     }
 }

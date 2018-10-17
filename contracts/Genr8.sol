@@ -76,6 +76,7 @@ contract Genr8 is Ownable, BackedERC20Token {
         uint256 counterEarned
     );
 
+
     event Revenue(
         uint256 amount,
         address source,

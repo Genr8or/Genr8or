@@ -1,5 +1,5 @@
 pragma solidity ^0.4.24;
-import "./MintableBurnableERC20Token.sol";
+import "./BackedERC20Token.sol";
 import "zeppelin-solidity/contracts/ownership/Ownable.sol";
 import "./Genr8or.sol";
 
@@ -29,7 +29,7 @@ import "./Genr8or.sol";
 *
 */
 
-contract Genr8ICO is Ownable, MintableBurnableERC20Token {
+contract Genr8ICO is Ownable, BackedERC20Token {
     using SafeMath for uint256;
    
     modifier ethCounter(){
@@ -73,27 +73,28 @@ contract Genr8ICO is Ownable, MintableBurnableERC20Token {
         _;
     }
 
-    bytes32 public myName;
-    bytes32 public mySymbol;
-    uint256 public sellRevenuePercent; 
-    uint8 public decimals = 18;
     uint256 public launchBlockHeight = 0;
     uint256 public launchBalanceTarget = 0;
     uint256 public launchBalanceCap = 0;
     bool public hasLaunched = false;
-    address counter;
+
     Genr8 public destination;
     Genr8or public factory;
     
-    constructor(bytes32 aName, bytes32 aSymbol, uint256 aSellRevenuePercent, address aCounter, uint8 aDecimals, uint256 aLaunchBlockHeight, uint256 aLaunchBalanceTarget, uint256 aLaunchBalanceCap, Genr8or aFactory) public {
-        myName = aName;
-        mySymbol = aSymbol;
-        sellRevenuePercent = aSellRevenuePercent;
-        decimals = aDecimals;
+    constructor(string aName, 
+    string aSymbol, 
+    uint8 someDecimals, 
+    address aCounter, 
+    uint256 aPrecision, 
+    uint256 aLaunchBlockHeight, 
+    uint256 aLaunchBalanceTarget, 
+    uint256 aLaunchBalanceCap, 
+    Genr8or aFactory)
+    BackedERC20Token(aName, aSymbol, someDecimals, aCounter, aPrecision) 
+    public {
         launchBlockHeight = aLaunchBlockHeight;
         launchBalanceTarget = aLaunchBalanceTarget;
         launchBalanceCap = aLaunchBalanceCap;
-        counter = aCounter;
         factory = aFactory;
     }
 
@@ -120,60 +121,18 @@ contract Genr8ICO is Ownable, MintableBurnableERC20Token {
         mint(msg.sender, amount);
     }
 
-
-    function name() public view returns(bytes32){
-        return myName;
-    }
-
-    function symbol() public view returns(bytes32){
-        return mySymbol;
-    }
-
-    function decimals() public view returns(uint8){
-        if(!hasLaunched){
-            return 18;
-        }else{
-            return decimals;
-        }
-    }
-
     function launch() public hasNotLaunched isReadyToLaunch returns (address) {
         hasLaunched = true;
-        destination = factory.genr8(myName, mySymbol, sellRevenuePercent, counter, decimals);
+        destination = factory.genr8(name, symbol, decimals, counter, precision);
         Ownable(destination).transferOwnership(owner);
         if(totalSupply() > 0){
             if(counter == 0x0){
-                destination.buy.value(totalSupply())();
+                destination.invest.value(totalSupply())();
             } else {
-                destination.buyERC20(totalSupply());
+                destination.investERC20(totalSupply());
             }
         }
-    }
-
-    function myBalance() public view returns (uint256) {
-        return balanceOf(msg.sender);
-    }
-
-    function balanceOf(address anAddress) public view returns (uint256){
-        if(!hasLaunched){
-            return super.balanceOf(anAddress);
-        }else{
-            return destination.balanceOf(this).div(totalSupply().div(super.balanceOf(anAddress)));//TODO fix this math it's broken badly
-        }
-    }
-
-    function counterToTokens(uint256 aCounter) public view returns (uint256){
-        if(!hasLaunched){
-            return aCounter;
-        }
-        return 0;
-    }
-
-    function tokensToCounter(uint256 someTokens) public view returns (uint256) {
-        if(!hasLaunched){
-            return someTokens;
-        }
-        return totalSupply().mul(10000).div(destination.balanceOf(this)).mul(someTokens).div(10000);
+        counter = destination;
     }
     
     function withdraw(uint256 amount) balanceHolder public returns (bool) {
@@ -192,11 +151,7 @@ contract Genr8ICO is Ownable, MintableBurnableERC20Token {
         return true;
     }
 
-    function refund() hasNotLaunched balanceHolder public {
-        withdraw(balanceOf(msg.sender));
-    }
-
-    function redeem() hasAlreadyLaunched balanceHolder public {
+    function exit() balanceHolder public {
         withdraw(balanceOf(msg.sender));
     }
     
