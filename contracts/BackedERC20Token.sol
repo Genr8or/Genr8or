@@ -4,12 +4,16 @@ import "./MintableBurnableERC20Token.sol";
 
 contract BackedERC20Token is MintableBurnableERC20Token {
 
-    address counter;
-    uint256 precision;
+    address public counter;
+    uint256 public precision;
 
     constructor(string name, string symbol, uint8 decimals, address _counter, uint256 _precision) DetailedERC20(name, symbol, decimals) public {
         counter = _counter;
         precision = _precision;
+    }
+
+    function counter() public view returns (address){
+        return counter;
     }
 
     function counterBalance() public view returns (uint256){
