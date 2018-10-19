@@ -15,6 +15,10 @@ contract MintableBurnableERC20Token is StandardToken, DetailedERC20, Ownable {
     
   event Mint(address indexed to, uint256 amount);
   event Burn(address indexed from, uint256 amount);
+
+    constructor(string name, string symbol, uint8 decimals) DetailedERC20(name, symbol, decimals) StandardToken() Ownable() public {
+
+    }
    
     function mint(address to, uint256 amount) internal returns (bool) {
         // prevent overflow

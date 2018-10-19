@@ -37,30 +37,20 @@ contract Genr8 is Ownable, BackedERC20Token {
     =================================*/
     // only people with tokens
     modifier onlyTokenHolders() {
-        require(myTokens() > 0);
+        require(myTokens() > 0, "You must be an existing investor to do this.");
         _;
     }
     
-    modifier onlyPreLaunch() {
-        require(totalSupply() == 0 && counterBalance() == 0);
-        _;
-    }
-
     modifier ethCounter() {
-        require(counter == 0x0);
+        require(counter == 0x0, "This is configured for ERC-20, not ETH.");
         _;
     }
 
     modifier erc20Counter(){
-        require(counter != 0x0);
+        require(counter != 0x0, "This is configured for ETH, not ERC-20.");
         _;
     }
 
-    modifier validInvestment(uint256 amount){
-        require(amount >= MIN_BUY);
-        _;
-    }
-    
     /*==============================
     =            EVENTS            =
     ==============================*/
@@ -82,12 +72,7 @@ contract Genr8 is Ownable, BackedERC20Token {
         address source,
         string reason
     );
-    
-    /*=====================================
-    =              CONSTANTS              =
-    =====================================*/
-    
-    uint256 constant MIN_BUY = 0.0001 ether;
+
         
     /*=======================================
     =            PUBLIC FUNCTIONS            =
@@ -98,24 +83,7 @@ contract Genr8 is Ownable, BackedERC20Token {
     constructor(string myName, string mySymbol, uint8 myDecimals, address myCounter, uint256 myPrecision) public BackedERC20Token(myName, mySymbol, myDecimals, myCounter, myPrecision) {
     }
 
-    /**
-     * Converts all incoming counter to tokens for the caller
-     */
-    function invest() public payable ethCounter validInvestment(msg.value) returns(uint256) {
-        require(msg.value > MIN_BUY);
-        return purchaseTokens(msg.sender, msg.value);
-    }
     
-
-    /**
-     * Converts all incoming counter to tokens for the caller
-     */
-    function investERC20(uint256 amount) public erc20Counter validInvestment(msg.value) returns(uint256) {
-        require(ERC20(counter).transferFrom(msg.sender, this, amount));
-        return purchaseTokens(msg.sender, amount);
-    }
-
-
     /**
      * Fallback function to handle counter that was sent straight to the contract.
      * Causes tokens to be purchased.
@@ -127,30 +95,57 @@ contract Genr8 is Ownable, BackedERC20Token {
     /**
      * Create revenue without purchasing tokens
      */
-    function donate() payable public {
+    function donate() payable public ethCounter {
         emit Revenue(msg.value, msg.sender, "ETH Donation");
     }
     
     /**
+     * Converts all incoming counter to tokens for the caller
+     */
+    function invest() public payable ethCounter returns(uint256) {
+        //They must send in more than 0 tokens
+        require(msg.value > 0, "You must send ETH to invest.");
+        //Mint the tokens for their investment
+        return mintTokens(msg.sender, msg.value);
+    }
+    
+
+    /**
+     * Converts all incoming counter to tokens for the caller
+     */
+    function investERC20(uint256 amount) public erc20Counter returns(uint256) {
+        //They must send in more than 0 tokens.
+        require(amount > 0, "You must specificy an amount to invest.");
+        //The transferFrom ERC20 should return true if the tokens were successfully transfered.
+        require(ERC20(counter).transferFrom(msg.sender, this, amount), "The transfer was not suscesful.");
+        //Mint the tokens for their investment
+        return mintTokens(msg.sender, amount);
+    }
+
+    /**
      * Liquifies tokens to counter.
      */
-    function sell(uint256 amountOfTokens) onlyTokenHolders public returns(uint256) {
-        return sellTokens(msg.sender, amountOfTokens);
+    function divest(uint256 amountOfTokens) onlyTokenHolders public returns(uint256) {
+        //They cannot divest 0 tokens.
+        require(amountOfTokens > 0, "You cannot divest 0 tokens.");
+        //The cannot transfer more than they own
+        require(amountOfTokens <= balanceOf(msg.sender), "You cannot divest more tokens than you have.");
+        //Do the sell
+        return burnTokens(msg.sender, amountOfTokens);
     }
 
     /**
      * Transfer tokens from the caller to a new holder.
-     * Transfering ownership of tokens requires settling outstanding dividends
-     * and transfering them back. You can therefore send 0 tokens to this contract to
-     * trigger your withdraw.
      */
     function transfer(address toAddress, uint256 amountOfTokens) onlyTokenHolders public returns(bool) {
-       // Sell on transfer in instead of transfering to us
+        //The cannot transfer more than they own
+        require(amountOfTokens <= balanceOf(msg.sender));
+        // Sell on transfer in instead of transfering to us
         if(toAddress == address(this)){
             // If we sent in tokens
             if(amountOfTokens > 0){
                 //destroy them and credit their account with ETH
-                sellTokens(msg.sender, amountOfTokens);
+                burnTokens(msg.sender, amountOfTokens);
             }
             //Don't need to do anything else.
             return true;
@@ -158,43 +153,26 @@ contract Genr8 is Ownable, BackedERC20Token {
         //Do the normal transfer instead
         return super.transfer(toAddress, amountOfTokens);
     }
- 
-
-    /*----------  HELPERS AND CALCULATORS  ----------*/
-
-    /**
-     * Method to view the current counter balance of the contract
-     */
-    function counterBalance() public view returns(uint256) {
-        if(counter == 0x0){
-            return address(this).balance;
-        } else {
-            return ERC20(counter).balanceOf(this);
-        }
-    }
-    
-    /**
-     * Retrieve the tokens owned by the caller.
-     */
-    function myTokens() public view returns(uint256) {
-        return balanceOf(msg.sender);
-    }
     
     /*==========================================
     =            INTERNAL FUNCTIONS            =
     ==========================================*/
-    function purchaseTokens(address who, uint256 incomingCounter) internal returns(uint256) {
+    function mintTokens(address who, uint256 incomingCounter) internal returns(uint256) {
+        //Compute the number of tokens to give them
         uint256 amountOfTokens = counterToTokens(incomingCounter);
+        //Mint the new tokens
         mint(who, amountOfTokens);
+        //fire events
         emit Buy(who, incomingCounter, amountOfTokens);
         emit Transfer(0x0, who, amountOfTokens);
+        //Return the amount of tokens minted
         return amountOfTokens;
     }
 
-    function sellTokens(address who, uint256 tokenAmount) internal returns(uint256) {
-        require(tokenAmount > 0);
-        require(tokenAmount <= balanceOf(who));
+    function burnTokens(address who, uint256 tokenAmount) internal returns(uint256) {
+        //Compute the amount of counter to give them
         uint256 counterAmount = tokensToCounter(tokenAmount);
+        //Burn the tokens
         burn(who, tokenAmount);
         //Send them their eth/counter
         if(counter == 0x0){
@@ -202,10 +180,10 @@ contract Genr8 is Ownable, BackedERC20Token {
         }else{
             ERC20(counter).transfer(who, counterAmount);
         }
-        
         // fire event
-        emit Sell(who, tokenAmount, counterAmount);
         emit Transfer(who, 0x0, tokenAmount);
+        emit Sell(who, tokenAmount, counterAmount);
+        //Return the amount of counter being sent
         return counterAmount;
     }
 
