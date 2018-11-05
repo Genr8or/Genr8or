@@ -60,4 +60,14 @@ contract BackedERC20Token is MintableBurnableERC20Token {
         return balanceOf(msg.sender);
     }
 
+    /**
+     * Send counter to the recepient, either ETH or ERC20
+     */
+     function send(address aDestination, uint256 anAmount) internal {
+        if(counter == 0x0){
+            aDestination.transfer(anAmount);
+        }else{
+            require(ERC20(counter).transfer(aDestination, anAmount));
+        }
+     }
 }
