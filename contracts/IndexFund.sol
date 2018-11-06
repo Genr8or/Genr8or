@@ -2,7 +2,7 @@ pragma solidity ^0.4.24;
 
 import "./BackedERC20Token.sol";
 
-contract Bankroll is BackedERC20Token {
+contract IndexFund is BackedERC20Token {
 
     modifier ethCounter(){
         require(counter == 0x0);
@@ -28,7 +28,10 @@ contract Bankroll is BackedERC20Token {
 
     enum ProposalType{
         WHITELIST,
-        BLACKLIST
+        BLACKLIST,
+        BLOCKS_BETWEEN_QUOTAS,
+        COOL_OFF_PERIOD,
+        PROPOSAL_COST
     }
 
     struct Quota{
@@ -41,10 +44,46 @@ contract Bankroll is BackedERC20Token {
         uint256 votes;
         uint256 vetos;
         address source;
+        uint256 value;
         ProposalState proposalState;
         ProposalType proposalType;
         uint256 blockApproved;
     }
+
+    event ProposalCreated (
+        address creator,
+        address source,
+        uint256 value,
+        ProposalState proposalState,
+        ProposalType proposalType,
+        uint256 blockApproved
+    );
+
+    event ProposalVoteCast(
+        uint256 proposalId,
+        address voter,
+        uint256 voteAmount,
+        uint256 totalVotes
+    );
+
+    event ProposalVetoCast(
+        uint256 proposalId,
+        address vetoer,
+        uint256 vetoerAmount,
+        uint256 totalVetos
+    );
+
+    event ProposalApproved(
+        uint256 proposalId
+    );
+
+    event ProposalVetoed (
+        uint256 proposalId
+    );
+
+    event ProposalActivated (
+        uint256 proposalId
+    );
 
     event Investment(
         address source,
@@ -97,52 +136,73 @@ contract Bankroll is BackedERC20Token {
     mapping(address => Quota) public quotas;
     mapping(address => uint256) public delinquent;
     uint256 public lastQuota = 0;
-    uint256 constant public BLOCKS_BETWEEN_QUOTAS = 5760;
-    uint256 constant public COOL_OFF_PERIOD = BLOCKS_BETWEEN_QUOTAS * 14;
-    uint256 constant public PROPOSAL_COST = 0.5 ether;
+    uint256 public blocksBetweenQuotas = 5760;
+    uint256 public coolOffPeriod = 5760 * 14;
+    uint256 public proposalCost = 0.5 ether;
     Proposal[] public proposals;
     mapping(address => uint256) staked;
-    mapping(address => uint256) stakedOn;    
+    mapping(address => uint256) stakedOn;   
+    mapping(address => uint256) vetoed;
+    mapping(address => uint256) vetoedOn;     
+    
     constructor(string name, string symbol, uint8 decimals, address _counter, uint256 _precision) public BackedERC20Token(name, symbol, decimals, _counter, _precision){
 
     }
 
-    function createProposal(address source, ProposalType aType) public payable ethCounter returns (uint256){
-        require(msg.value >= PROPOSAL_COST);
-        proposals.push(Proposal(0, 0, source, ProposalState.PROPOSED, aType, 0));
-        return proposals.length - 1;
+    function createProposal(ProposalType aType, address source, uint256 value) public payable ethCounter returns (uint256){
+        require(msg.value >= proposalCost);
+        emit ProposalCreated(msg.sender, source, aType, value);
+        return proposals.push(Proposal(0, 0, source, value, ProposalState.PROPOSED, aType, 0)) - 1;
     }
 
-    function unstake() public {
+    function unvote() public {
         if(staked[msg.sender] == 0){
             return;
         }
-        if(proposals[stakedOn[msg.sender]].proposalState != ProposalState.PROPOSED || proposals[stakedOn[msg.sender]].proposalState != ProposalState.APPROVED){
+        if(proposals[stakedOn[msg.sender]].proposalState != ProposalState.PROPOSED){
             staked[msg.sender] = 0;
             return;
         }
-        if(proposals[stakedOn[msg.sender]].proposalState == ProposalState.PROPOSED){
-            proposals[stakedOn[msg.sender]].votes -= staked[msg.sender];
-        }else{
-            proposals[stakedOn[msg.sender]].vetos -= staked[msg.sender];
-        }
+        proposals[stakedOn[msg.sender]].votes -= staked[msg.sender];
         staked[msg.sender] = 0;
     }
 
-    function vote(uint256 anAmount, uint256 proposal) public {
+    function unveto() public {
+        if(vetoed[msg.sender] == 0){
+            return;
+        }
+        if(proposals[vetoedOn[msg.sender]].proposalState != ProposalState.APPROVED){
+            vetoed[msg.sender] = 0;
+            return;
+        }
+        proposals[vetoedOn[msg.sender]].votes -= staked[msg.sender];
+        vetoed[msg.sender] = 0;
+    }
+
+    function vote(uint256 proposal, uint256 anAmount) public {
         require(proposal < proposals.length);
         require(anAmount <= balanceOf(msg.sender));
         require(proposals[proposal].proposalState == ProposalState.PROPOSED);
-        unstake();
+        unvote();
         proposals[proposal].votes += anAmount;
         staked[msg.sender] = anAmount;
         stakedOn[msg.sender] = proposal;
-        if(proposals[proposal].votes > totalSupply()/2){
-            proposals[proposal].proposalState = ProposalState.APPROVED;
+        emit ProposalVoteCast(proposal, msg.sender, anAmount, proposals[proposal].votes);
+        updateProposal(proposal);
+    }
+
+    function updateProposal(uint256 proposal) public {
+        require(proposal < proposals.length);
+        require(proposals[proposal].proposalState == ProposalState.PROPOSED);
+        if(proposals[proposal].votes > totalSupply() / 2){
             if(proposals[proposal].proposalType == ProposalType.BLACKLIST){
                 unwhitelist(indexOf(whitelist, proposals[proposal].source));
+                proposals[proposal].proposalState = ProposalState.ACTIVATED;
+                emit ProposalActivated(proposal);
                 return;
             }
+            emit ProposalApproved(proposal);
+            proposals[proposal].proposalState = ProposalState.APPROVED;
             proposals[proposal].blockApproved = block.number;
         }
     }
@@ -150,31 +210,44 @@ contract Bankroll is BackedERC20Token {
     function veto(uint256 anAmount, uint256 proposal) public {
         require(proposal < proposals.length);
         require(anAmount <= balanceOf(msg.sender));
-        require(proposals[proposal].proposalState == ProposalState.APPROVED && proposals[proposal].proposalType == ProposalType.WHITELIST);
-        unstake();
+        require(proposals[proposal].proposalState == ProposalState.APPROVED);
+        unveto();
         proposals[proposal].vetos += anAmount;
-        staked[msg.sender] = anAmount;
-        stakedOn[msg.sender] = proposal;
-        if(proposals[proposal].votes > totalSupply()/2){
+        vetoed[msg.sender] = anAmount;
+        vetoedOn[msg.sender] = proposal;
+        emit ProposalVetoCast(proposal, msg.sender, anAmount, proposals[proposal].votes);
+        if(proposals[proposal].vetos > totalSupply() / 2){
             proposals[proposal].proposalState = ProposalState.VETOED;
+            emit ProposalVetoed(proposal);
         }
     }
 
     function activateProposal(uint256 proposal) public {
         require(proposal < proposals.length);
-        require(proposals[proposal].proposalState == ProposalState.APPROVED && proposals[proposal].proposalType == ProposalType.WHITELIST);
-        require(proposals[proposal].blockApproved + COOL_OFF_PERIOD <= block.number);
-        whitelist(proposals[proposal].source);
+        require(proposals[proposal].proposalState == ProposalState.APPROVED);
+        require(proposals[proposal].blockApproved + coolOffPeriod <= block.number);
+        if(proposals[proposal].proposalType == ProposalType.WHITELIST){
+            whitelist(proposals[proposal].source);
+        }else if(proposals[proposal].proposalType == ProposalType.BLOCKS_BETWEEN_QUOTAS){
+            blocksBetweenQuotas = proposals[proposal].value;
+        }else if(proposals[proposal].proposalType == ProposalType.COOL_OFF_PERIOD){
+            coolOffPeriod = proposals[proposal].value;
+        }else if(proposals[proposal].proposalType == ProposalType.PROPOSAL_COST){
+            proposalCost = proposals[proposal].value;
+        }
         proposals[proposal].proposalState = ProposalState.ACTIVATED;
+        emit ProposalActivated(proposal);
     }
 
-    function transfer(address source, uint256 amount) public returns (bool){
-        unstake();
-        return super.transfer(source, amount);
+    function transfer(address destination, uint256 amount) public returns (bool){
+        unvote();
+        unveto();
+        return super.transfer(destination, amount);
     }
 
     function transferFrom(address source, address destination, uint256 amount) public returns (bool){
-        unstake();
+        unvote();
+        unveto();
         return super.transferFrom(source, destination, amount);
     }
 
@@ -196,6 +269,8 @@ contract Bankroll is BackedERC20Token {
 
     function divest(uint256 anAmount) public returns (uint256){
         require(anAmount <= balanceOf(msg.sender));
+        unvote();
+        unveto();
         uint256 toSend = tokensToCounter(anAmount);
         burn(msg.sender, anAmount);
         send(msg.sender, toSend);
@@ -258,7 +333,7 @@ contract Bankroll is BackedERC20Token {
     }
 
     function checkQuotas() public {
-        if(lastQuota + BLOCKS_BETWEEN_QUOTAS <= block.number){
+        if(lastQuota + blocksBetweenQuotas <= block.number){
             assignQuotas();
         }
     }
