@@ -1,6 +1,6 @@
 # Genr8or
 
-A dApp based platform for the monetization of audiences by influencers.
+A dApp based platform for the monetization of audiences by influencers through the creation of investor products.
 
 ## What's it do?
 
@@ -18,19 +18,17 @@ The platform consists of multiple parts, each of which contribute to a holistic 
 
 ## Genr8
 
-Genr8 is an ERC-20 security token, backed 1:1 by it's availalbe counter balance (either ETH or another ERC-20 token).
-
-It's designed to enable investment in an operation which will generate revenue, and share that revenue equally among all investors. It also allows investors to use crowdsourcing of decision making to create additional revenue for participants, with no risk to participants who do not wish to risk at a cost of some of their revenue share.
+The point of a Genr8 is to provide funding to opportunities, with the expectation of a return that's made available to investors. It's designed to enable investment in an operation which will generate revenue, and share that revenue equally among all investors. It also allows investors to use crowdsourcing of decision making to create additional revenue for participants, with no risk to participants who do not wish to risk at a cost of some of their revenue share.
 
 Security tokens are always redeemable for their backing counter at any time. Buy and sell events are revenue neutral: They don't change the price. Revenue, which is any counter security that enters the contract independant of new investors, is considered 'revenvue' and increases the buy/sell price of the token proportionate to the new amount of funds available.
 
-As a result, the 'price' of the token can only ever go up, since additional counter which arrives in the balance of the contract is then also counted towards the price increase. The number of investors at risk of losing anything are therefore ZERO.
+## Index vs Hedge Fund Mode
 
-Once the counter has been invested, anyone can submit a "proposal". A proposal is a way to invest the funds in an external source, with the intention of later selling that investment. A proposal is then committed to by investors in the fund, which causes their investment to be spent as part of the execution of the proposal.
+Genr8 funds can operate in one of two modes: Index fund, or Hedge fund mode.
 
-A proposal can have and set of conditions for execution, such as an amount that's being invested, or external factors that are invoked through a supplied external contract. Once a proposal has met it's requirement, it can be executed by any committer of it, causing all the committed funds to be spent to the supplied external contract. Committers can then vote to close the propsal, which executes a sell of the committed security, returning a revenue source or realizing a loss for the contract depending on the outcome of the investment.
+When a Genr8 is operating in index fund mode, a set of external opportunities is given access to the funds in the contract via a daily quota with the expectation that they will return more to the fund over time than what they take. Investors can vote to change the parameters of the contract, including what opportunities are being 'indexed', allowing for investors to add or remove new opportunities that they approve, and change the rules that govern those opportunitie's bankrolls.
 
-When a committed proposal is closed for a positive win the revenue is split proportionately in a 90/10% split between the committers of the proposal and ALL the owners of the security. However if it's closed for a negative amount that loss is shared only by the committers. Thus is it the best interest of the committers to only close proposals for a gain, or else they will take the loss.
+When a Genr8 is configured in hedge fund mode, the owner of the contract can submit a proposal to fund a specific opportunity, and investors can choose to 'fund' that proposal. When that proposal gives a return, a preconfigured amount amount is split between those who invested in the proposal, and the remainder is used to increase the price of issuing new tokens.
 
 ### How to deploy and use
 
@@ -49,17 +47,31 @@ Once deployed, you can:
 - myTokens: Get your balance
 - revenueCost: Compute the revenue cost for a sell
 - tokensToCounter/counterToTokens: Compute the exchange rate for counter<->tokens
-- createProposal: Create a new proposal
-- commit: Commit funds to an unexecuted proposal
-- uncommit: Uncommit funds to an unexecuted proposal
-- execute: Execute a proposal
-- vote: Vote to close out an executed proposal
-- close: Close an executed proposal that has reached a majority vote to close
 
 ## Genr8or
+
+A factory for creating new Genr8s.
+
 ## Genr8ICO
+
+A ICO for doing a fair launch of a Genr8.
+
+ICOs are:
+- Secure: The users funds are secured by the contract at all times.
+- Refundable: Prior to launch, a user can always get their funds back.
+- Configurable: The soft, hard, and time cap are all configured by the user, allowing for long running ICO's which do not launch even after reaching their funding goal until a date in the future. Even the counter accepted can be ETH, or ERC-20 based.
+- ERC-20/Exchange ready: Since ICO investment represents future ownership of the token backed by the investment, the ERC-20 tokens can be traded on exchanges ahead of the ICO launch, allowing for ICOs valuations beyond their hard cap on the secondary market prior to launch.
+
 ## Genr8orICO
+
+A Factory for creating new Genr8ICOs.
+
 ## Genr8Bonds
+
+A ERC-20 bond with a delivery based upon increased valuation of a Genr8.
+
+When a bond is purchased, it purchases an underlying security, such as a Genr8 configured in Hedge or Index fund mode. At that time, the user enters a FIFO queue to receive their investment back multiplied by a constant. Since Genr8 tokens have a valuation that is determinable on-chain, upon demand a user can sell 1/2 the profitable portion of the 
+
 ## Genr8orBonds
 ## Genr8Futures
 ## Genr8orFutures
